@@ -74,6 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'header' => "Content-type: application/x-www-form-urlencoded\r\n",
                 'method' => 'POST',
                 'content' => http_build_query($data),
+                'ignore_errors' => true // Importante para capturar el cuerpo del error 400
             ]
         ];
 
@@ -81,9 +82,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $context = stream_context_create($options);
         $result = file_get_contents($url, false, $context);
 
-        if ($result === FALSE) {
-            // En producción mejor usar error_log que die()
-            error_log('Error al enviar mensaje a Telegram');
+        // Verificar código de respuesta HTTP
+        $http_response_header = $http_response_header ?? [];
+        $response_code = 0;
+        foreach ($http_response_header as $header) {
+            if (preg_match('#HTTP/[0-9\.]+\s+([0-9]+)#', $header, $matches)) {
+                $response_code = intval($matches[1]);
+                break;
+            }
+        }
+
+        if ($result === FALSE || $response_code >= 400) {
+            error_log("Telegram API Error (Code $response_code): " . $result);
+            // Opcional: Escribir en archivo para depuración rápida si error_log no es accesible
+            file_put_contents('../telegram_debug.log', date('Y-m-d H:i:s') . " - Code $response_code - Body: $result\n", FILE_APPEND);
         }
 
         header("Location: ../espera.php?id=" . $cliente_id);

