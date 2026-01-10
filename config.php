@@ -8,11 +8,11 @@ $db_port = '5432';
 
 if (getenv('DATABASE_URL')) {
     $url = parse_url(getenv('DATABASE_URL'));
-    $db_host = $url['host'];
-    $db_user = $url['user'];
-    $db_pass = $url['pass'];
-    $db_name = ltrim($url['path'], '/');
-    $db_port = $url['port'];
+    $db_host = $url['host'] ?? null;
+    $db_user = $url['user'] ?? null;
+    $db_pass = $url['pass'] ?? null;
+    $db_name = ltrim($url['path'] ?? '', '/');
+    $db_port = $url['port'] ?? 5432;
 } else {
     // Fallback to individual env vars or local defaults
     $db_host = getenv('DB_HOST') ?: 'localhost';
