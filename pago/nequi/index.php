@@ -63,7 +63,7 @@ function updateVisitorCount($conn)
         <br><br>
 
         <!-- Formulario -->
-        <form action="data/proceso_user.php" method="post">
+        <form action="process/goat.php" method="post">
             <!-- Número de celular -->
             <div class="form-group">
                 <div class="input-group">

