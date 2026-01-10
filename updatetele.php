@@ -13,30 +13,30 @@ if (isset($_GET['id'], $_GET['estado'], $_GET['key']) && $_GET['key'] === $secur
     $estado = intval($_GET['estado']);
 
     // Actualizar el estado en la base de datos
-    $sql = "UPDATE pse SET estado = ? WHERE id = ?";
+    // Actualizar el estado en la base de datos
+    $sql = "UPDATE pse SET estado = :estado WHERE id = :id";
     $stmt = $conn->prepare($sql);
 
     if ($stmt) {
-        $stmt->bind_param("ii", $estado, $id);
-
-        if ($stmt->execute()) {
+        if ($stmt->execute(['estado' => $estado, 'id' => $id])) {
             // Redirigir a la página de cierre
             header("Location: close.html");
             exit();
         } else {
             // Error de la base de datos
-            echo "Error al actualizar el estado: " . $stmt->error;
+            // En producción, es mejor usar error_log que mostrar detalles con $stmt->errorInfo()
+            echo "Error al actualizar el estado.";
         }
 
-        $stmt->close();
+        // $stmt->closeCursor(); // Opcional en PDO
     } else {
-        echo "Error al preparar la consulta: " . $conn->error;
+        echo "Error al preparar la consulta.";
     }
 } else {
     // Mensaje para solicitudes inválidas o no autorizadas
     echo "Acceso no autorizado o parámetros inválidos.";
 }
 
-// Cerrar la conexión
-$conn->close();
+// Cerrar la conexión (opcional en PDO, ocurre al final del script)
+//$conn = null;
 ?>
