@@ -37,6 +37,8 @@ try {
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_TIMEOUT => 30,
         CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        CURLOPT_PROXY => 'brd.superproxy.io:33335',
+        CURLOPT_PROXYUSERPWD => 'brd-customer-hl_fbfc5ae2-zone-isp_proxy1:o48h9tp75936',
         CURLOPT_HTTPHEADER => [
             'referer: https://portal.air-e.com/Pagar',
             'moduleid: 1699',
