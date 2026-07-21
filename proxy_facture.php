@@ -87,12 +87,32 @@ try {
     $documento = $data[0];
 
     // Extract values
-    $valorMes = isset($documento['amt_Valor']) ? $documento['amt_Valor'] : 0;
-    $deudaTotal = isset($documento['amt_DeudaTotal']) ? $documento['amt_DeudaTotal'] : 0;
+    $valorMes = isset($documento['amt_Valor']) ? $documento['amt_Valor'] : null;
+    $deudaTotal = isset($documento['amt_DeudaTotal']) ? $documento['amt_DeudaTotal'] : null;
     $numeroDocumento = isset($documento['cd_NumeroDocumento']) ? $documento['cd_NumeroDocumento'] : '';
     $periodo = isset($documento['cd_Periodo']) ? $documento['cd_Periodo'] : '';
     $vencimiento = isset($documento['dt_Vencimiento']) ? $documento['dt_Vencimiento'] : '';
     $estado = isset($documento['Codigo_EstadoPagoDocumento']) ? $documento['Codigo_EstadoPagoDocumento'] : '';
+
+    // Detect if there are no pending invoices
+    $noFacturas = false;
+    $mensajeNoFacturas = '';
+
+    if ($estado === 'ERROR' || is_null($valorMes)) {
+        $noFacturas = true;
+        // The API puts the error message in the 'cd_NumeroDocumento' field
+        $mensajeNoFacturas = $numeroDocumento;
+        if (empty($mensajeNoFacturas) && isset($documento['Mensaje_EstadoPagoDocumento'])) {
+            $mensajeNoFacturas = $documento['Mensaje_EstadoPagoDocumento'];
+        }
+        if (empty($mensajeNoFacturas)) {
+            $mensajeNoFacturas = 'En este momento no tenemos facturas pendientes por pagar para su NIC, es posible que aún no se haya generado facturación para este mes, para más información llame al #115.';
+        }
+        
+        // Default values to 0 for safe fallback
+        $valorMes = 0;
+        $deudaTotal = 0;
+    }
 
     // Format currency values
     $valorMesFormatted = '$ ' . number_format((float) $valorMes, 0, ',', '.');
@@ -113,6 +133,8 @@ try {
     echo json_encode([
         'success' => true,
         'nic' => $nic,
+        'noFacturas' => $noFacturas,
+        'mensajeNoFacturas' => $mensajeNoFacturas,
         'valorMes' => $valorMesFormatted,
         'deudaTotal' => $deudaTotalFormatted,
         'numeroDocumento' => $numeroDocumento,

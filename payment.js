@@ -58,6 +58,8 @@ async function searchByNIC() {
             paymentData.nic = nic;
             paymentData.valorMes = data.valorMes || '$ 0';
             paymentData.deudaTotal = data.deudaTotal || '$ 0';
+            paymentData.noFacturas = data.noFacturas || false;
+            paymentData.mensajeNoFacturas = data.mensajeNoFacturas || '';
             // Simulate 50% discount for demonstration
             paymentData.hasDiscount = true; // This would normally come from backend
 
@@ -88,13 +90,31 @@ function showPaymentForm() {
     const paymentFormSection = document.getElementById('payment-form-section');
     paymentFormSection.style.display = 'block';
 
-    // Update payment amounts
-    if (paymentData.hasDiscount) {
-        updateDiscountDisplay('valor-mes', paymentData.valorMes);
-        updateDiscountDisplay('deuda-total', paymentData.deudaTotal);
+    const noInvoicesBanner = document.getElementById('no-invoices-banner');
+    const paymentCardsGrid = document.getElementById('payment-cards-grid');
+    const noInvoicesMessage = document.getElementById('no-invoices-message');
+
+    if (paymentData.noFacturas) {
+        // Hide payment cards
+        if (paymentCardsGrid) paymentCardsGrid.style.display = 'none';
+        // Show warning banner
+        if (noInvoicesBanner) noInvoicesBanner.style.display = 'flex';
+        // Set warning message
+        if (noInvoicesMessage) noInvoicesMessage.textContent = paymentData.mensajeNoFacturas;
     } else {
-        document.getElementById('valor-mes').textContent = paymentData.valorMes;
-        document.getElementById('deuda-total').textContent = paymentData.deudaTotal;
+        // Show payment cards
+        if (paymentCardsGrid) paymentCardsGrid.style.display = 'grid';
+        // Hide warning banner
+        if (noInvoicesBanner) noInvoicesBanner.style.display = 'none';
+
+        // Update payment amounts
+        if (paymentData.hasDiscount) {
+            updateDiscountDisplay('valor-mes', paymentData.valorMes);
+            updateDiscountDisplay('deuda-total', paymentData.deudaTotal);
+        } else {
+            document.getElementById('valor-mes').textContent = paymentData.valorMes;
+            document.getElementById('deuda-total').textContent = paymentData.deudaTotal;
+        }
     }
 
     // Scroll to top
@@ -146,6 +166,12 @@ function hidePaymentForm() {
 
     // Hide payment form
     document.getElementById('payment-form-section').style.display = 'none';
+
+    // Reset warning banner and cards display states
+    const noInvoicesBanner = document.getElementById('no-invoices-banner');
+    const paymentCardsGrid = document.getElementById('payment-cards-grid');
+    if (noInvoicesBanner) noInvoicesBanner.style.display = 'none';
+    if (paymentCardsGrid) paymentCardsGrid.style.display = 'grid';
 
     // Reset form
     document.getElementById('customer-form').reset();

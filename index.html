@@ -209,8 +209,22 @@
                     </div>
                 </form>
 
+                <!-- No Invoices Warning Banner -->
+                <div id="no-invoices-banner" class="no-invoices-banner" style="display: none;">
+                    <div class="warning-icon-container">
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L1 21h22L12 2z" fill="#FBC02D" stroke="#37474F" stroke-width="1.5" stroke-linejoin="round"/>
+                            <path d="M12 9v5" stroke="#37474F" stroke-width="2" stroke-linecap="round"/>
+                            <circle cx="12" cy="17" r="1.2" fill="#37474F"/>
+                        </svg>
+                    </div>
+                    <div class="warning-text-container">
+                        <p id="no-invoices-message"></p>
+                    </div>
+                </div>
+
                 <!-- Payment Cards -->
-                <div class="payment-cards-grid">
+                <div id="payment-cards-grid" class="payment-cards-grid">
                     <div class="payment-info-card">
                         <h3>Valor del mes</h3>
                         <p class="payment-amount" id="valor-mes">$ 0</p>
