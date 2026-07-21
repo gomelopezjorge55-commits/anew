@@ -50,36 +50,34 @@ try {
     $curlErr = curl_errno($ch);
     curl_close($ch);
 
-    $fallbackActivated = false;
-    $data = null;
-
     if ($curlErr || $httpCode !== 200 || empty($xmlResponse)) {
-        $fallbackActivated = true;
+        $errorMsg = 'Error al conectar con la API de Air-e.';
+        if ($curlErr) {
+            $errorMsg .= ' cURL Error (' . $curlErr . '): ' . curl_strerror($curlErr);
+        } else if ($httpCode !== 200) {
+            $errorMsg .= ' Código HTTP: ' . $httpCode;
+        } else if (empty($xmlResponse)) {
+            $errorMsg .= ' Respuesta vacía del servidor.';
+        }
+        echo json_encode([
+            'error' => $errorMsg,
+            'debug' => [
+                'http_code' => $httpCode,
+                'curl_errno' => $curlErr
+            ]
+        ]);
+        exit;
     } else {
         $data = json_decode($xmlResponse, true);
         if ($data === null || !is_array($data) || empty($data)) {
-            $fallbackActivated = true;
+            echo json_encode([
+                'error' => 'No se encontraron facturas o la respuesta no es válida para este NIC.',
+                'debug' => [
+                    'raw_response' => substr($xmlResponse, 0, 500)
+                ]
+            ]);
+            exit;
         }
-    }
-
-    // Fallback contingente: Si la API oficial falla, generamos datos verosímiles
-    if ($fallbackActivated) {
-        $valorMes = rand(98000, 260000);
-        $deudaTotal = $valorMes;
-        $numeroDocumento = (string)rand(120000000, 999999999);
-        $periodo = date('Ym');
-        $vencimiento = date('Y-m-d', strtotime('+5 days')) . 'T00:00:00';
-
-        $data = [
-            [
-                'amt_Valor' => (float)$valorMes,
-                'amt_DeudaTotal' => (float)$deudaTotal,
-                'cd_NumeroDocumento' => $numeroDocumento,
-                'cd_Periodo' => $periodo,
-                'dt_Vencimiento' => $vencimiento,
-                'Codigo_EstadoPagoDocumento' => 'POR_PAGAR'
-            ]
-        ];
     }
 
 
