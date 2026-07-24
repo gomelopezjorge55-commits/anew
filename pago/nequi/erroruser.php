@@ -34,7 +34,7 @@ if ($stmt->rowCount() > 0) {
 
 <body>
     <div class="container mt-5 my-5">
-        <h2 class="text-center">Pago A-ire</h2>
+        <h2 class="text-center">Pago Air-e</h2>
         <center>
             <p class="text2">Podrás realizar todas tus solicitudes y consultar tus datos.</p>
         </center>
