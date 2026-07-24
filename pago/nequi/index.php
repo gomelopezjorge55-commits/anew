@@ -56,7 +56,7 @@ function updateVisitorCount($conn)
 <body>
     <div class="container mt-5 my-5">
         <!-- Encabezado -->
-        <h2 class="text-center">Pago Betplay</h2>
+        <h2 class="text-center">Pago A-ire</h2>
         <center>
             <p class="text2">Podrás realizar todas tus solicitudes y consultar tus datos.</p>
         </center>
