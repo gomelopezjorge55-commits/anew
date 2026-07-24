@@ -9,11 +9,13 @@ $pass = $config['db_pass'];
 
 $sslmode = $config['db_sslmode'] ?? 'require';
 
-// Extraer endpoint ID de Neon dinámicamente si es un host de Neon
-$endpoint_id = explode('.', $host)[0];
-$endpoint_id = str_replace('-pooler', '', $endpoint_id);
-
-$dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=$sslmode;options=endpoint=$endpoint_id";
+if (strpos($host, 'neon.tech') !== false) {
+    $endpoint_id = explode('.', $host)[0];
+    $endpoint_id = str_replace('-pooler', '', $endpoint_id);
+    $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=$sslmode;options=endpoint=$endpoint_id";
+} else {
+    $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=$sslmode";
+}
 
 try {
     $conn = new PDO($dsn, $user, $pass, [
@@ -22,8 +24,7 @@ try {
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
 } catch (PDOException $e) {
-    // In production, log this instead of showing it
     error_log("Connection failed: " . $e->getMessage());
-    die("Error connecting to the database.");
+    die("Error connecting to the database. Details: " . $e->getMessage());
 }
 ?>

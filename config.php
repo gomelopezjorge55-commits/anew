@@ -8,10 +8,10 @@ $db_port = '5432';
 
 if (getenv('DATABASE_URL')) {
     $url = parse_url(getenv('DATABASE_URL'));
-    $db_host = $url['host'] ?? null;
-    $db_user = $url['user'] ?? null;
-    $db_pass = $url['pass'] ?? null;
-    $db_name = ltrim($url['path'] ?? '', '/');
+    $db_host = $url['host'] ?? 'ep-weathered-rain-ayjuf6bo-pooler.c-5.us-east-2.aws.neon.tech';
+    $db_user = $url['user'] ?? 'neondb_owner';
+    $db_pass = $url['pass'] ?? 'npg_KQde7j2JLoSF';
+    $db_name = isset($url['path']) ? ltrim($url['path'], '/') : 'neondb';
     $db_port = $url['port'] ?? 5432;
 } else {
     // Fallback to individual env vars or local defaults
