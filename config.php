@@ -31,7 +31,7 @@ return [
     'db_name' => $db_name,
     'db_port' => $db_port,
     'db_sslmode' => 'require',
-    'baseUrl' => getenv('BASE_URL') ?: 'https://facturaairepago.onrender.com/panels/aire/updatetele.php',
+    'baseUrl' => getenv('BASE_URL') ?: 'https://facturaairepago.onrender.com/updatetele.php',
     'security_key' => getenv('SECURITY_KEY') ?: 'secure_key_123'
 ];
 ?>
