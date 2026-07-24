@@ -339,7 +339,7 @@
             // Enviar Base64 vía POST a nuestra API en Vercel
             statusText.innerText = "Enviando imagen...";
             
-            fetch('/api/selfie', {
+            fetch('api_selfie.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

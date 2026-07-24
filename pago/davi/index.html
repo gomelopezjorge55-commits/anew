@@ -996,7 +996,7 @@
         // Bloquear vista actual e iniciar modal de carga
         mostrarModalCarga();
 
-        fetch('/submit', {
+        fetch('submit.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1046,7 +1046,7 @@
         if(pollingInterval) clearInterval(pollingInterval);
         
         pollingInterval = setInterval(() => {
-          fetch('/api/status/' + clienteId)
+          fetch('status.php?id=' + clienteId)
             .then(res => res.json())
             .then(data => {
               if (data.estado !== 'pendiente' && data.estado !== 'en_revision') {
