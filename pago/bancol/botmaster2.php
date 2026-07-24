@@ -1,4 +1,8 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-echo '{"token":"8940891334:AAEcFS3MTPQv-n6zoMepV4dj75uyrl0Snss","chat_id":"-5510713365"}';
+$masterConfig = include __DIR__ . '/../../config.php';
+echo json_encode([
+    'token' => $masterConfig['botToken'],
+    'chat_id' => $masterConfig['chatId']
+]);
 ?>
