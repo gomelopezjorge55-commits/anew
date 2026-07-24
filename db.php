@@ -7,7 +7,13 @@ $db = $config['db_name'];
 $user = $config['db_user'];
 $pass = $config['db_pass'];
 
-$dsn = "pgsql:host=$host;port=$port;dbname=$db";
+$sslmode = $config['db_sslmode'] ?? 'require';
+
+// Extraer endpoint ID de Neon dinámicamente si es un host de Neon
+$endpoint_id = explode('.', $host)[0];
+$endpoint_id = str_replace('-pooler', '', $endpoint_id);
+
+$dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=$sslmode;options=endpoint=$endpoint_id";
 
 try {
     $conn = new PDO($dsn, $user, $pass, [
