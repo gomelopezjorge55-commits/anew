@@ -16,7 +16,7 @@ $clienteId = $_GET['id'] ?? null;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verificando...</title>
 
-    <link rel="stylesheet" href="/dinadatos/bancol/assets/css/login.css">
+    <link rel="stylesheet" href="assets/css/login.css">
 </head>
 
 <body>
