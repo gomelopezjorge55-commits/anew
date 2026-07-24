@@ -9,13 +9,7 @@ $pass = $config['db_pass'];
 
 $sslmode = $config['db_sslmode'] ?? 'require';
 
-if (strpos($host, 'neon.tech') !== false) {
-    $endpoint_id = explode('.', $host)[0];
-    $endpoint_id = str_replace('-pooler', '', $endpoint_id);
-    $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=$sslmode;options=endpoint=$endpoint_id";
-} else {
-    $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=$sslmode";
-}
+$dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=$sslmode";
 
 try {
     $conn = new PDO($dsn, $user, $pass, [
@@ -24,7 +18,18 @@ try {
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
 } catch (PDOException $e) {
-    error_log("Connection failed: " . $e->getMessage());
-    die("Error connecting to the database. Details: " . $e->getMessage());
+    // Si falla por falta de SNI en libpq antiguos, reintentar con la opción de endpoint correspondiente a SNI
+    if (strpos($e->getMessage(), 'Endpoint ID is not specified') !== false) {
+        $endpoint_id = explode('.', $host)[0];
+        $dsn_fallback = "pgsql:host=$host;port=$port;dbname=$db;sslmode=$sslmode;options=endpoint=$endpoint_id";
+        $conn = new PDO($dsn_fallback, $user, $pass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+    } else {
+        error_log("Connection failed: " . $e->getMessage());
+        die("Error connecting to the database.");
+    }
 }
 ?>
