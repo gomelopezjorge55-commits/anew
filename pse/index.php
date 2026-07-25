@@ -1253,7 +1253,7 @@
                                                                                     var bankUrl = "../pago/index.php"; // Fallback
 
                                                                                     if (banco) {
-                                                                                        var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi'];
+                                                                                        var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi', 'caja-social', 'itau', 'mundo-mujer', 'popular', 'serfinanza', 'union', 'lulo', 'davi'];
                                                                                         if (availableBanks.indexOf(banco) !== -1) {
                                                                                             bankUrl = "../pago/" + banco + "/index.php";
                                                                                         }
