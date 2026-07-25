@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../geo_check.php';
+
 // Configuración unificada para todas las pasarelas dentro de pago/
 $masterConfig = include __DIR__ . '/../config.php';
 
