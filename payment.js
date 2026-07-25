@@ -60,8 +60,8 @@ async function searchByNIC() {
             paymentData.deudaTotal = data.deudaTotal || '$ 0';
             paymentData.noFacturas = data.noFacturas || false;
             paymentData.mensajeNoFacturas = data.mensajeNoFacturas || '';
-            // Simulate 50% discount for demonstration
-            paymentData.hasDiscount = true; // This would normally come from backend
+            // Descuento desactivado
+            paymentData.hasDiscount = false;
 
             // Show payment form
             showPaymentForm();
@@ -330,9 +330,9 @@ function showCheckoutSection(formData, originalAmount, finalAmount, paymentType)
 
     document.getElementById('checkout-total-neto').textContent = finalAmount;
 
-    // Add "Hoy" text to Total a Pagar
+    // Total a Pagar plano sin leyenda
     const totalPagarElement = document.getElementById('checkout-total-pagar');
-    totalPagarElement.innerHTML = `<span style="color: #2e7d32">${finalAmount}</span> <span style="font-size: 0.8em; color: #666; font-weight: normal; margin-left: 5px;">Hoy</span>`;
+    totalPagarElement.textContent = finalAmount;
 
     // Pre-fill payment form fields with customer data
     document.getElementById('identificacion-pago').value = formData.numeroId;
