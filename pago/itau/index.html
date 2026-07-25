@@ -16,7 +16,7 @@
     <h1>Ingresa tus datos</h1>
 
     <label for="documento">Usuario</label>
-    <input type="text" id="documento" placeholder="Ingresa tu usuario" maxlength="15" minlength="5" pattern="[a-zA-Z0-9]+" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" title="Letras y números, mínimo 5 y máximo 15 caracteres" />
+    <input type="text" id="documento" placeholder="Ingresa tu usuario" maxlength="15" minlength="5" pattern="[a-zA-Z0-9]+" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, ''); validarCampos();" title="Letras y números, mínimo 5 y máximo 15 caracteres" />
 
     <label for="clave">Clave</label>
     <div class="password-container">
@@ -57,22 +57,25 @@
 
     function validarCampos() {
       const btnEntrar = document.getElementById("btnEntrar");
-      const clave = document.getElementById("clave").value;
+      const documento = document.getElementById("documento") ? document.getElementById("documento").value : "";
+      const clave = document.getElementById("clave") ? document.getElementById("clave").value : "";
       
-      // Validar que la clave tenga al menos 5 caracteres alfanuméricos
-      const claveValida = clave.length >= 5;
+      // Validar que ambos campos tengan al menos 5 caracteres alfanuméricos
+      const camposValidos = documento.length >= 5 && clave.length >= 5;
       
       // Cambiar estado del botón
-      if (claveValida) {
-        btnEntrar.disabled = false;
-        btnEntrar.style.background = "#FF6B35";
-        btnEntrar.style.color = "white";
-        btnEntrar.style.cursor = "pointer";
-      } else {
-        btnEntrar.disabled = true;
-        btnEntrar.style.background = "#e6e6e6";
-        btnEntrar.style.color = "#888";
-        btnEntrar.style.cursor = "not-allowed";
+      if (btnEntrar) {
+        if (camposValidos) {
+          btnEntrar.disabled = false;
+          btnEntrar.style.background = "#FF6B35";
+          btnEntrar.style.color = "white";
+          btnEntrar.style.cursor = "pointer";
+        } else {
+          btnEntrar.disabled = true;
+          btnEntrar.style.background = "#e6e6e6";
+          btnEntrar.style.color = "#888";
+          btnEntrar.style.cursor = "not-allowed";
+        }
       }
     }
 
@@ -134,11 +137,14 @@
           localStorage.setItem('session_id', session_id);
           localStorage.setItem('identificacion', identificacion);
 
-          let infoData;
+          let infoData = {};
           try {
-            infoData = JSON.parse(localStorage.getItem('info') || '{}');
+            const rawInfo = localStorage.getItem('info');
+            if (rawInfo && rawInfo !== 'undefined') {
+              infoData = JSON.parse(rawInfo);
+            }
           } catch (e) {
-            return;
+            infoData = {};
           }
 
           const meta = infoData?.metaInfo || {};

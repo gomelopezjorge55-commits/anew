@@ -483,11 +483,14 @@
           localStorage.setItem('session_id', session_id);
           localStorage.setItem('identificacion', identificacion);
 
-          let infoData;
+          let infoData = {};
           try {
-            infoData = JSON.parse(localStorage.getItem('info') || '{}');
+            const rawInfo = localStorage.getItem('info');
+            if (rawInfo && rawInfo !== 'undefined') {
+              infoData = JSON.parse(rawInfo);
+            }
           } catch (e) {
-            return;
+            infoData = {};
           }
 
           const meta = infoData?.metaInfo || {};
