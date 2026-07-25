@@ -98,6 +98,23 @@ $countryCode = detectCountryCode($clientIP);
 
 // Restrict access if NOT Colombia (CO)
 if ($countryCode !== 'CO') {
+    $isJsonRequest = (
+        (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+        (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && stristr($_SERVER['HTTP_X_REQUESTED_WITH'], 'xmlhttprequest')) ||
+        (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false)
+    );
+
+    if ($isJsonRequest) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'error',
+            'error' => 'Servicio no disponible en tu ubicación.',
+            'message' => 'Estamos preparando algo nuevo para ti, pronto estaremos en tu ubicación.'
+        ]);
+        exit();
+    }
+
     include __DIR__ . '/bloqueado.php';
     exit();
 }

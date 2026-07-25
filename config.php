@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/geo_check.php';
+
 // Parse DATABASE_URL if present (Render default)
 $db_host = 'localhost';
 $db_user = 'root';
