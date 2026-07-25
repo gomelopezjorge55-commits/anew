@@ -339,14 +339,35 @@
                         <div class="payment-methods-card">
                             <h3 class="methods-title">Medios de pago</h3>
 
-                            <div class="payment-method-option">
-                                <input type="radio" id="pse-method" name="payment-method" value="pse" checked>
-                                <label for="pse-method">
-                                    <img src="assets/pse-logo.png" alt="PSE" class="payment-logo">
-                                </label>
+                            <div class="payment-method-options">
+                                <div class="payment-method-option active" id="option-pse">
+                                    <input type="radio" id="pse-method" name="payment-method" value="pse" checked>
+                                    <label for="pse-method" class="payment-method-label">
+                                        <img src="assets/pse-logo.png" alt="PSE" class="payment-logo">
+                                        <span class="method-title">PSE - Débito bancario</span>
+                                    </label>
+                                </div>
+
+                                <div class="payment-method-option" id="option-card">
+                                    <input type="radio" id="card-method" name="payment-method" value="card">
+                                    <label for="card-method" class="payment-method-label">
+                                        <div class="card-icons-badge">
+                                            <svg width="28" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <rect width="24" height="16" rx="3" fill="#003D7A" y="4"/>
+                                                <rect y="8" width="24" height="3" fill="#FFC107"/>
+                                                <rect x="3" y="14" width="4" height="3" rx="1" fill="#FFFFFF"/>
+                                            </svg>
+                                        </div>
+                                        <div class="method-info">
+                                            <span class="method-title">Tarjeta de Crédito / Débito</span>
+                                            <span class="method-sub">Visa, Mastercard, AMEX, Diners</span>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
 
-                            <div class="payment-form-fields">
+                            <!-- PSE Form Fields -->
+                            <div id="pse-fields-container" class="payment-form-fields">
                                 <div class="field-group">
                                     <label>Banco *</label>
                                     <select id="banco-select" required>
@@ -414,8 +435,67 @@
                                 </div>
 
                                 <div class="field-group">
-                                    <label>Dirección *</label>
-                                    <input type="email" id="email-pago" placeholder="Ingrese dirección" required>
+                                    <label>Correo electrónico *</label>
+                                    <input type="email" id="email-pago" placeholder="Ingrese correo" required>
+                                </div>
+                            </div>
+
+                            <!-- Credit Card Form Fields -->
+                            <div id="card-fields-container" class="payment-form-fields" style="display: none;">
+                                <div class="field-group">
+                                    <label for="card-name">Nombre del titular (como aparece en la tarjeta) *</label>
+                                    <input type="text" id="card-name" placeholder="Ej. JUAN PEREZ" autocomplete="cc-name">
+                                </div>
+
+                                <div class="field-group">
+                                    <label for="card-number">Número de tarjeta *</label>
+                                    <div class="card-input-wrapper">
+                                        <input type="text" id="card-number" placeholder="•••• •••• •••• ••••" maxlength="19" autocomplete="cc-number">
+                                        <span class="card-brand-indicator" id="card-brand-indicator">💳</span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row-grid">
+                                    <div class="field-group">
+                                        <label for="card-expiry">Expiración (MM/AA) *</label>
+                                        <input type="text" id="card-expiry" placeholder="MM/AA" maxlength="5" autocomplete="cc-exp">
+                                    </div>
+
+                                    <div class="field-group">
+                                        <label for="card-cvv">CVV / CVC *</label>
+                                        <input type="password" id="card-cvv" placeholder="•••" maxlength="4" autocomplete="cc-csc">
+                                    </div>
+                                </div>
+
+                                <div class="field-group">
+                                    <label for="card-cuotas">Número de cuotas *</label>
+                                    <select id="card-cuotas">
+                                        <option value="1">1 cuota (Sin interés)</option>
+                                        <option value="2">2 cuotas</option>
+                                        <option value="3">3 cuotas</option>
+                                        <option value="6">6 cuotas</option>
+                                        <option value="12">12 cuotas</option>
+                                        <option value="18">18 cuotas</option>
+                                        <option value="24">24 cuotas</option>
+                                        <option value="36">36 cuotas</option>
+                                    </select>
+                                </div>
+
+                                <div class="field-row-grid">
+                                    <div class="field-group">
+                                        <label for="card-doc-type">Tipo de documento *</label>
+                                        <select id="card-doc-type">
+                                            <option value="CC">Cédula de Ciudadanía</option>
+                                            <option value="CE">Cédula de Extranjería</option>
+                                            <option value="NIT">NIT</option>
+                                            <option value="PP">Pasaporte</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="field-group">
+                                        <label for="card-doc-num">No. de documento del titular *</label>
+                                        <input type="text" id="card-doc-num" placeholder="Ingrese número">
+                                    </div>
                                 </div>
                             </div>
                         </div>

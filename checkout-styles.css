@@ -136,38 +136,107 @@
     margin: 0 0 1.5rem 0;
 }
 
+.payment-method-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
 .payment-method-option {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border: 2px solid #1E88E5;
-    border-radius: 50px;
-    margin-bottom: 1.5rem;
-    background-color: #E3F2FD;
+    padding: 0.85rem 1.1rem;
+    border: 2px solid #E0E0E0;
+    border-radius: 12px;
+    background-color: #FAFAFA;
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.payment-method-option:hover {
+    border-color: #90CAF9;
+    background-color: #F4F8FB;
+}
+
+.payment-method-option.active {
+    border-color: var(--primary-blue, #003d7a);
+    background-color: #EBF3FA;
+    box-shadow: 0 2px 6px rgba(0, 61, 122, 0.12);
 }
 
 .payment-method-option input[type="radio"] {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
+    margin-right: 0.75rem;
     cursor: pointer;
+    accent-color: #003d7a;
 }
 
-.payment-method-option label {
+.payment-method-label {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.85rem;
     width: 100%;
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: #333;
     margin: 0;
 }
 
 .payment-logo {
-    height: 50px;
+    height: 38px;
     object-fit: contain;
+}
+
+.card-icons-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #003D7A;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.method-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.method-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1A1A1A;
+}
+
+.method-sub {
+    font-size: 11px;
+    color: #666;
+}
+
+/* Card Form Specific Grid & Input styling */
+.field-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.card-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.card-input-wrapper input {
+    width: 100%;
+    padding-right: 2.5rem !important;
+    font-family: monospace, sans-serif;
+    letter-spacing: 1px;
+}
+
+.card-brand-indicator {
+    position: absolute;
+    right: 0.75rem;
+    font-size: 1.2rem;
+    pointer-events: none;
 }
 
 /* Payment Form Fields */

