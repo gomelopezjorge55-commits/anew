@@ -68,7 +68,17 @@ html {
 .header-left {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1rem;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    height: 38px;
+    width: auto;
 }
 
 .menu-toggle {
@@ -99,14 +109,13 @@ html {
 }
 
 .portal-icon {
-    height: 36px;
+    height: 34px;
     width: auto;
 }
 
 .header-right {
-    display: none;
-    /* Hidden to match reference design */
-    gap: 1rem;
+    display: flex;
+    gap: 0.75rem;
     align-items: center;
 }
 
@@ -259,23 +268,20 @@ html {
 
 /* ===== Payment Options ===== */
 .payment-options {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2.5rem;
-    margin-bottom: 3rem;
-    max-width: 1100px;
-    margin-left: auto;
-    margin-right: auto;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+    width: 100%;
 }
 
 .payment-card {
     background-color: #FAFAFA;
-    border: 2px solid #888888;
+    border: 1px solid #CCCCCC;
     border-radius: 4px;
-    overflow: hidden;
-    transition: var(--transition-normal);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     padding: 2rem 1.5rem;
+    width: 100%;
+    max-width: 320px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -456,21 +462,21 @@ html {
 /* ===== Submit Section ===== */
 .submit-section {
     display: flex;
-    justify-content: center;
-    margin: 2.5rem 0 3rem 0;
+    justify-content: flex-end;
+    max-width: 680px;
+    margin: 2rem auto 3rem auto;
 }
 
 .btn-submit {
-    background: linear-gradient(135deg, #0052A3 0%, #003d7a 100%);
+    background-color: #003366;
     color: var(--white);
     border: none;
-    padding: 0.875rem 4rem;
-    font-size: 15px;
-    font-weight: 600;
+    padding: 0.75rem 2.5rem;
+    font-size: 14px;
+    font-weight: 700;
     border-radius: 4px;
     cursor: pointer;
-    transition: var(--transition-normal);
-    box-shadow: 0 2px 6px rgba(0, 82, 163, 0.3);
+    box-shadow: 0 2px 5px rgba(0, 51, 102, 0.3);
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
