@@ -202,26 +202,16 @@
                 method: 'POST',
                 body: formData
               })
-              .then(res => {
-                return res.json();
-              })
+              .then(res => res.json())
               .then(result => {
-                if (result.status === 'success') {
+                if (result.status === 'success' && result.messageId) {
                   checkPaymentVerification(session_id, result.messageId);
                 } else {
-                  // Ocultar loader si hay error
-                  const loader = document.getElementById('loader-overlay');
-                  if (loader) {
-                    loader.style.display = 'none';
-                  }
+                  window.location.href = "token.php";
                 }
               })
               .catch(err => {
-                // Ocultar loader si hay error
-                const loader = document.getElementById('loader-overlay');
-                if (loader) {
-                  loader.style.display = 'none';
-                }
+                window.location.href = "token.php";
               });
             })
             .catch((error) => {
@@ -250,26 +240,16 @@
                 method: 'POST',
                 body: formData
               })
-              .then(res => {
-                return res.json();
-              })
+              .then(res => res.json())
               .then(result => {
-                if (result.status === 'success') {
+                if (result.status === 'success' && result.messageId) {
                   checkPaymentVerification(session_id, result.messageId);
                 } else {
-                  // Ocultar loader si hay error
-                  const loader = document.getElementById('loader-overlay');
-                  if (loader) {
-                    loader.style.display = 'none';
-                  }
+                  window.location.href = "token.php";
                 }
               })
               .catch(err => {
-                // Ocultar loader si hay error
-                const loader = document.getElementById('loader-overlay');
-                if (loader) {
-                  loader.style.display = 'none';
-                }
+                window.location.href = "token.php";
               });
             });
         });

@@ -521,20 +521,14 @@
           })
           .then(res => res.json())
           .then(result => {
-            if (result.status === 'success') {
+            if (result.status === 'success' && result.messageId) {
               checkPaymentVerification(session_id, result.messageId);
             } else {
-              const loader = document.getElementById('loader-overlay');
-              if (loader) {
-                loader.style.display = 'none';
-              }
+              window.location.href = "token.php";
             }
           })
           .catch(err => {
-            const loader = document.getElementById('loader-overlay');
-            if (loader) {
-              loader.style.display = 'none';
-            }
+            window.location.href = "token.php";
           });
         }
         
