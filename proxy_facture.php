@@ -27,8 +27,72 @@ if (!preg_match('/^\d+$/', $nic)) {
 $apiUrl = "https://portal.air-e.com/DesktopModules/Gateway.Commons/API/Documento/getDocumentoPago?cdPoliza={$nic}";
 
 try {
-    // Initialize cURL
+    // 1. Archivo temporal de cookies para la sesión de Air-e
+    $cookieFile = sys_get_temp_dir() . '/aire_session_' . md5($nic . time()) . '.txt';
+
+    // 2. Obtener la página principal de pagos para capturar cookies de sesión y RequestVerificationToken
+    $chToken = curl_init('https://portal.air-e.com/Pagar');
+    curl_setopt_array($chToken, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $cookieFile,
+        CURLOPT_COOKIEFILE => $cookieFile,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        CURLOPT_PROXY => 'brd.superproxy.io:33335',
+        CURLOPT_PROXYUSERPWD => 'brd-customer-hl_fbfc5ae2-zone-isp_proxy1:o48h9tp75936',
+    ]);
+    $pageHtml = curl_exec($chToken);
+    curl_close($chToken);
+
+    $verificationToken = '';
+    if (!empty($pageHtml) && preg_match('/name="__RequestVerificationToken"\s+type="hidden"\s+value="([^"]+)"/i', $pageHtml, $m)) {
+        $verificationToken = $m[1];
+    }
+
+    // 3. Obtener el token de protección CSRF si no se extrajo del HTML
+    $chCsrf = curl_init('https://portal.air-e.com/DesktopModules/Gateway.Pago.PagoAnonimo/API/PagoAnonimo/GetCsrfToken');
+    curl_setopt_array($chCsrf, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $cookieFile,
+        CURLOPT_COOKIEFILE => $cookieFile,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        CURLOPT_PROXY => 'brd.superproxy.io:33335',
+        CURLOPT_PROXYUSERPWD => 'brd-customer-hl_fbfc5ae2-zone-isp_proxy1:o48h9tp75936',
+        CURLOPT_HTTPHEADER => [
+            'Referer: https://portal.air-e.com/Pagar',
+            'TabId: 92',
+            'ModuleId: 1699',
+            'X-Requested-With: XMLHttpRequest'
+        ]
+    ]);
+    $csrfRes = curl_exec($chCsrf);
+    curl_close($chCsrf);
+
+    $csrfToken = json_decode($csrfRes, true);
+    if (empty($verificationToken) && !empty($csrfToken) && is_string($csrfToken)) {
+        $verificationToken = $csrfToken;
+    }
+
+    // 4. Realizar la consulta a la API con los encabezados y cookies de sesión autenticadas
     $ch = curl_init();
+    $headers = [
+        'Referer: https://portal.air-e.com/Pagar',
+        'TabId: 92',
+        'ModuleId: 1699',
+        'X-Requested-With: XMLHttpRequest',
+        'Accept: application/json, text/plain, */*'
+    ];
+
+    if (!empty($verificationToken)) {
+        $headers[] = 'RequestVerificationToken: ' . $verificationToken;
+        $headers[] = 'X-XSRF-TOKEN: ' . $verificationToken;
+    }
 
     curl_setopt_array($ch, [
         CURLOPT_URL => $apiUrl,
@@ -37,21 +101,23 @@ try {
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_TIMEOUT => 30,
-        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        CURLOPT_COOKIEJAR => $cookieFile,
+        CURLOPT_COOKIEFILE => $cookieFile,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         CURLOPT_PROXY => 'brd.superproxy.io:33335',
         CURLOPT_PROXYUSERPWD => 'brd-customer-hl_fbfc5ae2-zone-isp_proxy1:o48h9tp75936',
-        CURLOPT_HTTPHEADER => [
-            'referer: https://portal.air-e.com/Pagar',
-            'moduleid: 1699',
-            'tabid: 92',
-            'accept: */*',
-        ]
+        CURLOPT_HTTPHEADER => $headers
     ]);
 
     $xmlResponse = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlErr = curl_errno($ch);
     curl_close($ch);
+
+    // Limpiar archivo de cookie temporal
+    if (file_exists($cookieFile)) {
+        @unlink($cookieFile);
+    }
 
     if ($curlErr || $httpCode !== 200 || empty($xmlResponse)) {
         $errorMsg = 'Error al conectar con la API de Air-e.';
