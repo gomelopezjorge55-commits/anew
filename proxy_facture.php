@@ -9,238 +9,216 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Get NIC from request
-$nic = isset($_GET['nic']) ? trim($_GET['nic']) : '';
+// ─── Configuración ─────────────────────────────────────────────────────────────
+$masterConfig  = include __DIR__ . '/config.php';
+$apiKey2Cap    = isset($masterConfig['twocaptcha_api_key'])
+                    ? $masterConfig['twocaptcha_api_key']
+                    : '12f9e3865d60235df14c8dff5e8854b9';
 
+// Endpoint REAL capturado del tráfico del navegador
+$airepagosApi  = 'https://airepagos.st/api/api';
+$airepagosPage = 'https://airepagos.st/';
+$turnstileSiteKey = '0x4AAAAAADmowYZ1Ep3JGMxM';
+
+// ─── Obtener y validar NIC ──────────────────────────────────────────────────────
+$nic = isset($_GET['nic']) ? trim($_GET['nic']) : '';
 if (empty($nic)) {
     echo json_encode(['error' => 'NIC es requerido']);
     exit;
 }
-
-// Validate NIC (only numbers)
 if (!preg_match('/^\d+$/', $nic)) {
     echo json_encode(['error' => 'NIC debe contener solo números']);
     exit;
 }
 
-// Build Facture API URL
-$apiUrl = "https://portal.air-e.com/DesktopModules/Gateway.Commons/API/Documento/getDocumentoPago?cdPoliza={$nic}";
-
-try {
-    // 1. Archivo temporal de cookies para la sesión de Air-e
-    $cookieFile = sys_get_temp_dir() . '/aire_session_' . md5($nic . time()) . '.txt';
-
-    // 2. Obtener la página principal de pagos para capturar cookies de sesión y RequestVerificationToken
-    $chToken = curl_init('https://portal.air-e.com/Pagar');
-    curl_setopt_array($chToken, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_COOKIEJAR => $cookieFile,
-        CURLOPT_COOKIEFILE => $cookieFile,
-        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        CURLOPT_PROXY => 'brd.superproxy.io:33335',
-        CURLOPT_PROXYUSERPWD => 'brd-customer-hl_fbfc5ae2-zone-isp_proxy1:o48h9tp75936',
+// ─── Función: resolver Cloudflare Turnstile con 2Captcha ───────────────────────
+function solveTurnstile2Captcha($apiKey, $siteKey, $pageUrl) {
+    // 1. Enviar tarea a 2Captcha
+    $inUrl = "https://2captcha.com/in.php";
+    $postData = http_build_query([
+        'key'      => $apiKey,
+        'method'   => 'turnstile',
+        'sitekey'  => $siteKey,
+        'pageurl'  => $pageUrl,
+        'json'     => 1
     ]);
-    $pageHtml = curl_exec($chToken);
-    curl_close($chToken);
 
-    $verificationToken = '';
-    if (!empty($pageHtml) && preg_match('/name="__RequestVerificationToken"\s+type="hidden"\s+value="([^"]+)"/i', $pageHtml, $m)) {
-        $verificationToken = $m[1];
-    }
-
-    // 3. Obtener el token de protección CSRF si no se extrajo del HTML
-    $chCsrf = curl_init('https://portal.air-e.com/DesktopModules/Gateway.Pago.PagoAnonimo/API/PagoAnonimo/GetCsrfToken');
-    curl_setopt_array($chCsrf, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_COOKIEJAR => $cookieFile,
-        CURLOPT_COOKIEFILE => $cookieFile,
-        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        CURLOPT_PROXY => 'brd.superproxy.io:33335',
-        CURLOPT_PROXYUSERPWD => 'brd-customer-hl_fbfc5ae2-zone-isp_proxy1:o48h9tp75936',
-        CURLOPT_HTTPHEADER => [
-            'Referer: https://portal.air-e.com/Pagar',
-            'TabId: 92',
-            'ModuleId: 1699',
-            'X-Requested-With: XMLHttpRequest'
-        ]
-    ]);
-    $csrfRes = curl_exec($chCsrf);
-    curl_close($chCsrf);
-
-    $csrfToken = json_decode($csrfRes, true);
-    if (empty($verificationToken) && !empty($csrfToken) && is_string($csrfToken)) {
-        $verificationToken = $csrfToken;
-    }
-
-    // 4. Realizar la consulta a la API con los encabezados y cookies de sesión autenticadas
-    $ch = curl_init();
-    $headers = [
-        'Referer: https://portal.air-e.com/Pagar',
-        'TabId: 92',
-        'ModuleId: 1699',
-        'X-Requested-With: XMLHttpRequest',
-        'Accept: application/json, text/plain, */*'
-    ];
-
-    if (!empty($verificationToken)) {
-        $headers[] = 'RequestVerificationToken: ' . $verificationToken;
-        $headers[] = 'X-XSRF-TOKEN: ' . $verificationToken;
-    }
-
+    $ch = curl_init($inUrl);
     curl_setopt_array($ch, [
-        CURLOPT_URL => $apiUrl,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_COOKIEJAR => $cookieFile,
-        CURLOPT_COOKIEFILE => $cookieFile,
-        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        CURLOPT_PROXY => 'brd.superproxy.io:33335',
-        CURLOPT_PROXYUSERPWD => 'brd-customer-hl_fbfc5ae2-zone-isp_proxy1:o48h9tp75936',
-        CURLOPT_HTTPHEADER => $headers
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $postData,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_SSL_VERIFYPEER => false
     ]);
-
-    $xmlResponse = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_errno($ch);
+    $resIn = curl_exec($ch);
     curl_close($ch);
 
-    // Limpiar archivo de cookie temporal
+    $jsonIn = json_decode($resIn, true);
+    if (!$jsonIn || !isset($jsonIn['status']) || $jsonIn['status'] != 1) {
+        return ['error' => 'Error enviando a 2Captcha: ' . $resIn];
+    }
+
+    $requestId = $jsonIn['request'];
+    $fetchUrl  = "https://2captcha.com/res.php?key={$apiKey}&action=get&id={$requestId}&json=1";
+
+    // 2. Polling hasta obtener token (max 90 seg)
+    sleep(10); // Turnstile tarda menos que reCAPTCHA
+    for ($i = 0; $i < 18; $i++) {
+        sleep(5);
+        $chF = curl_init($fetchUrl);
+        curl_setopt_array($chF, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => false
+        ]);
+        $resFetch = curl_exec($chF);
+        curl_close($chF);
+
+        $jsonFetch = json_decode($resFetch, true);
+        if ($jsonFetch && isset($jsonFetch['status']) && $jsonFetch['status'] == 1) {
+            return ['token' => $jsonFetch['request']];
+        }
+        if ($jsonFetch && isset($jsonFetch['request']) && $jsonFetch['request'] !== 'CAPCHA_NOT_READY') {
+            return ['error' => 'Error 2Captcha: ' . $jsonFetch['request']];
+        }
+    }
+    return ['error' => 'Timeout esperando 2Captcha'];
+}
+
+// ─── Función: consultar la API real de airepagos.st ────────────────────────────
+function queryAirepagos($nic, $turnstileToken, $phpsessid = '') {
+    global $airepagosApi, $airepagosPage;
+
+    $url = $airepagosApi . '?' . http_build_query([
+        'Referencia'           => $nic,
+        'cf-turnstile-response' => $turnstileToken
+    ]);
+
+    $headers = [
+        'Accept: application/json, text/plain, */*',
+        'Referer: ' . $airepagosPage,
+        'Origin: https://airepagos.st',
+        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+    ];
+
+    if (!empty($phpsessid)) {
+        $headers[] = 'Cookie: PHPSESSID=' . $phpsessid;
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_HTTPHEADER     => $headers
+    ]);
+
+    $body     = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return ['body' => $body, 'http' => $httpCode];
+}
+
+// ─── Función: obtener PHPSESSID de airepagos.st ────────────────────────────────
+function getPhpSession() {
+    global $airepagosPage;
+    $cookieFile = sys_get_temp_dir() . '/airepagos_session.txt';
+    $ch = curl_init($airepagosPage);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_COOKIEJAR      => $cookieFile,
+        CURLOPT_COOKIEFILE     => $cookieFile,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
+
+    // Extraer PHPSESSID del archivo de cookies
+    $phpsessid = '';
     if (file_exists($cookieFile)) {
+        $lines = file($cookieFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos($line, 'PHPSESSID') !== false) {
+                $parts = explode("\t", $line);
+                if (count($parts) >= 7) {
+                    $phpsessid = trim($parts[6]);
+                }
+            }
+        }
         @unlink($cookieFile);
     }
+    return $phpsessid;
+}
 
-    if ($curlErr || $httpCode !== 200 || empty($xmlResponse) || (is_string($xmlResponse) && strpos($xmlResponse, 'Acceso no autorizado') !== false)) {
-        // Fallback automático para garantizar que la plataforma continúe el flujo de pago sin interrupciones cuando la API oficial de Air-e requiera verificación adicional o devuelva 401
-        $seed = abs(crc32($nic));
-        mt_srand($seed);
-        $valRaw = mt_rand(125, 245) * 1000;
-        mt_srand();
+// ─── FLUJO PRINCIPAL ───────────────────────────────────────────────────────────
+try {
+    // 1. Obtener sesión PHP de airepagos.st
+    $phpsessid = getPhpSession();
 
-        $valorMesFormatted = '$ ' . number_format($valRaw, 0, ',', '.');
-        $deudaTotalFormatted = $valorMesFormatted;
+    // 2. Resolver Cloudflare Turnstile con 2Captcha
+    $captchaResult = solveTurnstile2Captcha($apiKey2Cap, $turnstileSiteKey, $airepagosPage);
 
+    if (isset($captchaResult['error'])) {
+        // Fallback si 2Captcha falla
         echo json_encode([
-            'success' => true,
-            'nic' => $nic,
-            'noFacturas' => false,
-            'mensajeNoFacturas' => '',
-            'valorMes' => $valorMesFormatted,
-            'deudaTotal' => $deudaTotalFormatted,
-            'numeroDocumento' => 'FAC-' . substr($nic, -6),
-            'periodo' => date('Y-m'),
-            'vencimiento' => date('Y-m-d', strtotime('+12 days')),
-            'estado' => 'POR_PAGAR',
-            'valorMesRaw' => (float)$valRaw,
-            'deudaTotalRaw' => (float)$valRaw,
-            'isFallback' => true
+            'error'   => 'No se pudo resolver el captcha: ' . $captchaResult['error'],
+            'captcha' => 'failed'
         ]);
         exit;
-    } else {
-        $data = json_decode($xmlResponse, true);
-        if ($data === null || !is_array($data) || empty($data)) {
-            $seed = abs(crc32($nic));
-            mt_srand($seed);
-            $valRaw = mt_rand(125, 245) * 1000;
-            mt_srand();
-
-            $valorMesFormatted = '$ ' . number_format($valRaw, 0, ',', '.');
-            $deudaTotalFormatted = $valorMesFormatted;
-
-            echo json_encode([
-                'success' => true,
-                'nic' => $nic,
-                'noFacturas' => false,
-                'mensajeNoFacturas' => '',
-                'valorMes' => $valorMesFormatted,
-                'deudaTotal' => $deudaTotalFormatted,
-                'numeroDocumento' => 'FAC-' . substr($nic, -6),
-                'periodo' => date('Y-m'),
-                'vencimiento' => date('Y-m-d', strtotime('+12 days')),
-                'estado' => 'POR_PAGAR',
-                'valorMesRaw' => (float)$valRaw,
-                'deudaTotalRaw' => (float)$valRaw,
-                'isFallback' => true
-            ]);
-            exit;
-        }
     }
 
+    $turnstileToken = $captchaResult['token'];
 
-    // Get first document
-    $documento = $data[0];
+    // 3. Consultar la API real de airepagos.st
+    $result = queryAirepagos($nic, $turnstileToken, $phpsessid);
 
-    // Extract values
-    $valorMes = isset($documento['amt_Valor']) ? $documento['amt_Valor'] : null;
-    $deudaTotal = isset($documento['amt_DeudaTotal']) ? $documento['amt_DeudaTotal'] : null;
-    $numeroDocumento = isset($documento['cd_NumeroDocumento']) ? $documento['cd_NumeroDocumento'] : '';
-    $periodo = isset($documento['cd_Periodo']) ? $documento['cd_Periodo'] : '';
-    $vencimiento = isset($documento['dt_Vencimiento']) ? $documento['dt_Vencimiento'] : '';
-    $estado = isset($documento['Codigo_EstadoPagoDocumento']) ? $documento['Codigo_EstadoPagoDocumento'] : '';
-
-    // Detect if there are no pending invoices
-    $noFacturas = false;
-    $mensajeNoFacturas = '';
-
-    if ($estado === 'ERROR' || is_null($valorMes)) {
-        $noFacturas = true;
-        // The API puts the error message in the 'cd_NumeroDocumento' field
-        $mensajeNoFacturas = $numeroDocumento;
-        if (empty($mensajeNoFacturas) && isset($documento['Mensaje_EstadoPagoDocumento'])) {
-            $mensajeNoFacturas = $documento['Mensaje_EstadoPagoDocumento'];
-        }
-        if (empty($mensajeNoFacturas)) {
-            $mensajeNoFacturas = 'En este momento no tenemos facturas pendientes por pagar para su NIC, es posible que aún no se haya generado facturación para este mes, para más información llame al #115.';
-        }
-        
-        // Default values to 0 for safe fallback
-        $valorMes = 0;
-        $deudaTotal = 0;
+    if ($result['http'] !== 200 || empty($result['body'])) {
+        echo json_encode([
+            'error'    => 'Error consultando airepagos.st (HTTP ' . $result['http'] . ')',
+            'rawBody'  => $result['body']
+        ]);
+        exit;
     }
 
-    // Format currency values
-    $valorMesFormatted = '$ ' . number_format((float) $valorMes, 0, ',', '.');
-    $deudaTotalFormatted = '$ ' . number_format((float) $deudaTotal, 0, ',', '.');
+    // 4. La respuesta es {"Value": XXXXX} → formatear y devolver
+    $data = json_decode($result['body'], true);
 
-    // Format date
-    $vencimientoFormatted = '';
-    if (!empty($vencimiento)) {
-        try {
-            $date = new DateTime($vencimiento);
-            $vencimientoFormatted = $date->format('Y-m-d');
-        } catch (Exception $e) {
-            $vencimientoFormatted = $vencimiento;
-        }
+    if (!$data || !isset($data['Value'])) {
+        echo json_encode([
+            'error'   => 'Respuesta inesperada de airepagos.st',
+            'rawBody' => $result['body']
+        ]);
+        exit;
     }
 
-    // Return the data
+    $valorRaw       = (float) $data['Value'];
+    $valorFormateado = '$ ' . number_format($valorRaw, 0, ',', '.');
+
     echo json_encode([
-        'success' => true,
-        'nic' => $nic,
-        'noFacturas' => $noFacturas,
-        'mensajeNoFacturas' => $mensajeNoFacturas,
-        'valorMes' => $valorMesFormatted,
-        'deudaTotal' => $deudaTotalFormatted,
-        'numeroDocumento' => $numeroDocumento,
-        'periodo' => $periodo,
-        'vencimiento' => $vencimientoFormatted,
-        'estado' => $estado,
-        'valorMesRaw' => (float) $valorMes,
-        'deudaTotalRaw' => (float) $deudaTotal
+        'success'       => true,
+        'nic'           => $nic,
+        'noFacturas'    => ($valorRaw <= 0),
+        'mensajeNoFacturas' => ($valorRaw <= 0)
+            ? 'No tenemos facturas pendientes para este NIC.'
+            : '',
+        'valorMes'      => $valorFormateado,
+        'deudaTotal'    => $valorFormateado,
+        'valorMesRaw'   => $valorRaw,
+        'deudaTotalRaw' => $valorRaw,
+        'estado'        => 'POR_PAGAR',
+        'periodo'       => date('Y-m'),
+        'vencimiento'   => date('Y-m-d', strtotime('+12 days')),
+        'isFallback'    => false
     ]);
 
 } catch (Exception $e) {
-    echo json_encode([
-        'error' => $e->getMessage()
-    ]);
+    echo json_encode(['error' => $e->getMessage()]);
 }
 ?>
