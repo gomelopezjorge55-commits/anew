@@ -1,5 +1,8 @@
 <?php
-require_once __DIR__ . '/geo_check.php';
+// Aumentar límite de ejecución para el polling de 2Captcha (puede tomar ~60-90s)
+set_time_limit(180);
+ini_set('max_execution_time', 180);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
@@ -63,9 +66,9 @@ function solveTurnstile2Captcha($apiKey, $siteKey, $pageUrl) {
     $fetchUrl  = "https://2captcha.com/res.php?key={$apiKey}&action=get&id={$requestId}&json=1";
 
     // 2. Polling hasta obtener token (max 90 seg)
-    sleep(10); // Turnstile tarda menos que reCAPTCHA
-    for ($i = 0; $i < 18; $i++) {
-        sleep(5);
+    sleep(5); // Espera inicial reducida para Turnstile
+    for ($i = 0; $i < 24; $i++) {
+        sleep(4);
         $chF = curl_init($fetchUrl);
         curl_setopt_array($chF, [
             CURLOPT_RETURNTRANSFER => true,
