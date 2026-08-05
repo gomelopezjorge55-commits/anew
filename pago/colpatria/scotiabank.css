@@ -1,23 +1,25 @@
 /* ================================================
-   Scotiabank Colombia - Design System CSS
-   Fuentes: cdn.aglty.io/scotiabank-colombia/canvas/fonts/
+   DaviBank - Design System CSS
+   Fuentes: locales (woff)
    ================================================ */
 
 @font-face {
-    font-family: "Scotia Light";
-    src: url(https://cdn.aglty.io/scotiabank-colombia/canvas/fonts/Scotia_W_Lt)
-}
-@font-face {
     font-family: "Scotia Regular";
-    src: url(https://cdn.aglty.io/scotiabank-colombia/canvas/fonts/Scotia_W_Rg)
+    src: url('Scotia_W_Rg.a53c6af4aaff8c13.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
 }
 @font-face {
     font-family: "Scotia Bold";
-    src: url(https://cdn.aglty.io/scotiabank-colombia/canvas/fonts/Scotia_W_Bd)
+    src: url('Scotia_W_Bd.627aff1c32d06c15.woff') format('woff');
+    font-weight: bold;
+    font-style: normal;
 }
 @font-face {
     font-family: "Scotia Headline";
-    src: url(https://cdn.aglty.io/scotiabank-colombia/canvas/fonts/Scotia_W_Headline)
+    src: url('Scotia_W_Headline.5a532caa3319ee5c.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
 }
 
 /* ── Reset ───────────────────────────────────────── */
