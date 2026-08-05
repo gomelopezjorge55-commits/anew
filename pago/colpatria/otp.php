@@ -13,34 +13,20 @@
 
         body {
             font-family: 'Inter', Arial, sans-serif;
-            background-color: #f5f5f5;
+            background-color: #1C4F4A; /* Verde oscuro Davivienda */
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ── Header ─────────────────────────────── */
-        .header {
-            background: #fff;
-            border-top: 5px solid #E31B23;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 14px 24px;
-            display: flex;
-            align-items: center;
-        }
-
-        .header img {
-            height: 36px;
-            width: auto;
-        }
-
-        /* ── Card container ─────────────────────── */
-        .page-wrapper {
-            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 32px 16px;
+            padding: 24px 16px;
+        }
+
+        /* ── Wrapper ficticio para compatibilidad ── */
+        .page-wrapper {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .card {
@@ -159,14 +145,14 @@
 </head>
 <body>
 
-    <!-- Header con logo -->
-    <div class="header">
-        <img src="new-brand-red.svg" alt="Davivienda">
-    </div>
-
     <!-- OTP form -->
     <div class="page-wrapper">
         <div class="card">
+
+            <!-- Logo dentro de la card -->
+            <div class="logo-wrap" style="margin-bottom:24px;">
+                <img src="new-brand-red.svg" alt="Davivienda" style="height:36px;width:auto;">
+            </div>
 
             <!-- Icono -->
             <div class="shield-icon">
