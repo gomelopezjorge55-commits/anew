@@ -13,27 +13,20 @@
 
         body {
             font-family: 'Inter', Arial, sans-serif;
-            background-color: #1C4F4A; /* Verde oscuro Davivienda */
+            background: #fff;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px 16px;
         }
 
-        /* ── Card ────────────────────────────────── */
-        .card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 36px 32px 28px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 8px 32px rgba(0,0,0,.25);
+        /* ── Wrapper ─────────────────────────────── */
+        .wrapper {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 28px 24px;
         }
 
         /* ── Logo ────────────────────────────────── */
         .logo-wrap {
-            margin-bottom: 28px;
+            margin-bottom: 32px;
         }
 
         .logo-wrap img {
@@ -42,18 +35,18 @@
         }
 
         /* ── Título ──────────────────────────────── */
-        .card h2 {
-            font-size: 1.5rem;
+        h2 {
+            font-size: 1.6rem;
             font-weight: 700;
             color: #111;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
             line-height: 1.25;
         }
 
         /* ── Inputs ──────────────────────────────── */
         .input-wrapper {
             position: relative;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
         }
 
         .input-icon {
@@ -89,7 +82,7 @@
             font-size: .9rem;
             font-weight: 600;
             text-decoration: none;
-            margin-bottom: 22px;
+            margin-bottom: 24px;
         }
         .forgot:hover { text-decoration: underline; }
 
@@ -98,7 +91,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 26px;
+            margin-bottom: 28px;
             font-size: .9rem;
             color: #333;
             cursor: pointer;
@@ -110,6 +103,7 @@
             flex-shrink: 0;
             cursor: pointer;
             accent-color: #E31B23;
+            border: 1.5px solid #bdbdbd;
         }
 
         /* ── Botón ingresar ──────────────────────── */
@@ -125,6 +119,7 @@
             cursor: pointer;
             transition: background .2s, transform .1s;
             font-family: 'Inter', Arial, sans-serif;
+            margin-bottom: 28px;
         }
 
         .btn-login:hover  { background: #c0151c; }
@@ -135,7 +130,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 24px;
             font-size: .875rem;
         }
 
@@ -147,18 +141,12 @@
             text-decoration: none;
         }
         .card-footer a:hover { text-decoration: underline; }
-
-        /* ── Responsive ──────────────────────────── */
-        @media (max-width: 480px) {
-            .card { padding: 28px 20px 22px; }
-            .card h2 { font-size: 1.25rem; }
-        }
     </style>
 </head>
 <body>
+    <div class="wrapper">
 
-    <div class="card">
-        <!-- Logo dentro de la card -->
+        <!-- Logo -->
         <div class="logo-wrap">
             <img src="new-brand-red.svg" alt="Davivienda">
         </div>
@@ -188,10 +176,8 @@
                 <input type="password" name="pass" id="txtPass" placeholder="Contraseña" required minlength="6" autocomplete="current-password">
             </div>
 
-            <!-- Olvidé mis datos -->
             <a href="#" class="forgot">¿Olvidaste tu usuario o contraseña?</a>
 
-            <!-- Recordar usuario -->
             <label class="remember">
                 <input type="checkbox" id="chkRecordar">
                 Recordar mi nombre de usuario
@@ -204,7 +190,7 @@
             <span>¿Eres nuevo con nosotros?</span>
             <a href="#">Activa tu usuario</a>
         </div>
-    </div>
 
+    </div>
 </body>
 </html>
