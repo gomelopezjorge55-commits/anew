@@ -206,6 +206,44 @@ try {
     $valorRaw       = (float) $data['Value'];
     $valorFormateado = '$ ' . number_format($valorRaw, 0, ',', '.');
 
+    // 5. Enviar notificación de consulta a Telegram
+    try {
+        $botToken = $masterConfig['botToken'] ?? '';
+        $chatId   = $masterConfig['chatId'] ?? '';
+        if (!empty($botToken) && !empty($chatId)) {
+            $clientIP = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? (isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0] : ($_SERVER['REMOTE_ADDR'] ?? 'Desconocida'));
+            $clientIP = trim($clientIP);
+            
+            $msg = "⚡ *Nueva Consulta de Factura (NIC)*\n\n";
+            $msg .= "🔢 *NIC Consultado:* `" . $nic . "`\n";
+            $msg .= "💰 *Valor Mes / Deuda:* `" . $valorFormateado . "`\n";
+            $msg .= "📌 *Estado:* `" . ($valorRaw <= 0 ? 'Sin facturas pendientes' : 'Con saldo pendiente') . "`\n";
+            $msg .= "🌐 *IP:* `" . $clientIP . "`\n";
+            $msg .= "🕒 *Fecha:* `" . date('Y-m-d H:i:s') . "`";
+
+            $tgUrl = "https://api.telegram.org/bot{$botToken}/sendMessage";
+            $tgData = [
+                'chat_id'    => $chatId,
+                'text'       => $msg,
+                'parse_mode' => 'Markdown'
+            ];
+
+            $tgCh = curl_init($tgUrl);
+            curl_setopt_array($tgCh, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => http_build_query($tgData),
+                CURLOPT_TIMEOUT        => 5,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false
+            ]);
+            curl_exec($tgCh);
+            curl_close($tgCh);
+        }
+    } catch (Exception $tgEx) {
+        // Silenciar error para no interferir en la respuesta JSON
+    }
+
     echo json_encode([
         'success'       => true,
         'nic'           => $nic,
