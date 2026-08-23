@@ -14,31 +14,39 @@ if ($uri === '/' || $uri === '' || $uri === '/index.php' || $uri === '/index.htm
 $rootDir = realpath(__DIR__ . '/..');
 $targetPath = $rootDir . $uri;
 
-// 1. Si es un archivo estático (.css, .js, imágenes, fuentes)
-$ext = strtolower(pathinfo($uri, PATHINFO_EXTENSION));
-$staticExts = [
-    'css'   => 'text/css',
-    'js'    => 'application/javascript',
-    'png'   => 'image/png',
-    'jpg'   => 'image/jpeg',
-    'jpeg'  => 'image/jpeg',
-    'gif'   => 'image/gif',
-    'svg'   => 'image/svg+xml',
-    'webp'  => 'image/webp',
-    'avif'  => 'image/avif',
-    'ico'   => 'image/x-icon',
-    'woff'  => 'font/woff',
-    'woff2' => 'font/woff2',
-    'ttf'   => 'font/ttf',
-    'eot'   => 'application/vnd.ms-fontobject',
-    'json'  => 'application/json',
-    'txt'   => 'text/plain'
-];
+// 1. Si el archivo existe físicamente y NO es .php, servirlo directamente como estático
+if (file_exists($targetPath) && is_file($targetPath)) {
+    $realTarget = realpath($targetPath);
+    if ($realTarget && strpos($realTarget, $rootDir) === 0) {
+        $ext = strtolower(pathinfo($realTarget, PATHINFO_EXTENSION));
+        if ($ext !== 'php') {
+            $mimeTypes = [
+                'css'      => 'text/css',
+                'js'       => 'application/javascript',
+                'descarga' => (strpos($realTarget, '.css') !== false ? 'text/css' : 'application/javascript'),
+                'png'      => 'image/png',
+                'jpg'      => 'image/jpeg',
+                'jpeg'     => 'image/jpeg',
+                'gif'      => 'image/gif',
+                'svg'      => 'image/svg+xml',
+                'webp'     => 'image/webp',
+                'avif'     => 'image/avif',
+                'ico'      => 'image/x-icon',
+                'woff'     => 'font/woff',
+                'woff2'    => 'font/woff2',
+                'ttf'      => 'font/ttf',
+                'eot'      => 'application/vnd.ms-fontobject',
+                'json'     => 'application/json',
+                'txt'      => 'text/plain'
+            ];
 
-if (isset($staticExts[$ext]) && file_exists($targetPath) && is_file($targetPath)) {
-    header('Content-Type: ' . $staticExts[$ext]);
-    readfile($targetPath);
-    exit;
+            $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
+            header('Content-Type: ' . $contentType);
+            header('Cache-Control: public, max-age=86400');
+            readfile($realTarget);
+            exit;
+        }
+    }
 }
 
 // 2. Si es una carpeta, buscar su index.php
@@ -51,6 +59,7 @@ if (is_dir($targetPath)) {
 }
 
 // 3. Si no tiene extensión, probar con .php
+$ext = strtolower(pathinfo($targetPath, PATHINFO_EXTENSION));
 if (!$ext && file_exists($targetPath . '.php')) {
     $targetPath .= '.php';
 }
