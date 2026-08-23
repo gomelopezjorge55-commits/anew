@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.php",
+      "use": "vercel-php@0.9.0"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.php"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/api/index.php"
+    },
+    {
+      "src": "/pago/(.*)",
+      "dest": "/api/index.php"
+    },
+    {
+      "src": "/pse/(.*)",
+      "dest": "/api/index.php"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.php"
+    }
+  ],
+  "env": {
+    "BOT_TOKEN": "8563506224:AAHyMt9lKuRdadu3HqXMN3LMA3oukd8P-dk",
+    "CHAT_ID": "-1003796119223",
+    "SECURITY_KEY": "secure_key_123",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_KQde7j2JLoSF@ep-weathered-rain-ayjuf6bo-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
+  }
+}
