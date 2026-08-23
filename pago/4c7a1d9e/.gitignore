@@ -1,0 +1,26 @@
+# Dependencias y builds
+node_modules/
+vendor/
+
+# Logs
+*.log
+debug_log.txt
+modules/login/debug_log.txt
+
+# Config sensibles (no subir al repo)
+config/cloak_ips.php
+
+# Cache y temporales
+*.cache
+.DS_Store
+Thumbs.db
+
+# PHP sessions
+sess_*
+
+# IDE
+.vscode/
+.idea/
+
+# Archivos test
+test_neon.php

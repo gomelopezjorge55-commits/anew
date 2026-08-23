@@ -1,0 +1,49 @@
+============================================================
+           GUIA DE INSTALACION (XAMPP & RENDER)
+============================================================
+
+------------------------------------------------------------
+1. INSTALACION LOCAL (XAMPP)
+------------------------------------------------------------
+- Copia la carpeta del proyecto en: C:\xampp\htdocs\bogo
+- Abre XAMPP y activa Apache y MySQL.
+- Ve a http://localhost/phpmyadmin y crea la BD: bogo_db
+- Ejecuta este comando SQL para crear la tabla:
+
+CREATE TABLE a_confirmar (
+    id VARCHAR(255) PRIMARY KEY,
+    estado INT DEFAULT 0,
+    movil VARCHAR(20) DEFAULT NULL
+);
+
+- Configura tus credenciales en: assets/config/conexion.php
+- Acceso: http://localhost/bogo/index.php
+
+------------------------------------------------------------
+2. INSTALACION EN RENDER (PRODUCCION)
+------------------------------------------------------------
+- Sube el proyecto a GitHub.
+- Crea un Web Service en Render con Runtime: PHP.
+- Crea una DB PostgreSQL en Render y ejecuta el SQL de arriba.
+- Agrega estas Variables de Entorno (Environment Variables):
+
+RENDER = true
+DB_HOST = (Internal Database URL de tu DB)
+DB_NAME = (Nombre de tu DB en Render)
+DB_USER = (Usuario de tu DB)
+DB_PASSWORD = (Clave de tu DB)
+TELEGRAM_BOT_TOKEN = (Token de tu bot)
+TELEGRAM_CHAT_ID = (Tu ID de chat)
+BASE_URL = https://tu-app.onrender.com/assets/modules/api/actualizar_estado.php
+
+------------------------------------------------------------
+3. TELEGRAM (IMPORTANTE)
+------------------------------------------------------------
+- La BASE_URL debe ser la direccion real de tu sitio para que
+  los botones de Telegram funcionen.
+- Los botones solo se muestran si el sitio tiene HTTPS real.
+- El bot debe ser administrador del grupo o canal.
+
+============================================================
+PROYECTO LISTO PARA DESPEGAR! 🚀
+============================================================

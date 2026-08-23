@@ -1,19 +1,23 @@
 <?php
+// Deshabilitar display_errors — salida limpia JSON
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
+// ── Cloaking Anti-Bot ─────────────────────────────────────
+require_once __DIR__ . '/../../config/cloak.php';
+
 header('Content-Type: application/json');
 
-// 1. CARGAR CONFIGURACIÓN GLOBAL
-$config = require __DIR__ . '/../../../../config.php';
-
-if (!$config || !is_array($config)) {
-    echo json_encode(['error' => 'Error de configuración']);
-    exit();
+// Carga segura de config
+if (!isset($config) || !is_array($config)) {
+    $config = require __DIR__ . '/../../config/config.php';
 }
 
-// Conectarse a la DB usando el archivo de conexion global db.php
+// Conexión DB
 try {
-    include __DIR__ . '/../../../../db.php'; // Esto define la variable $conn
-    $pdo = $conn;
-} catch (Exception $e) {
+    $pdo = (isset($conn) && $conn instanceof PDO) ? $conn : require __DIR__ . '/../../config/db.php';
+}
+catch (Exception $e) {
     echo json_encode(['error' => 'Error de conexión a la base de datos']);
     exit();
 }
@@ -23,22 +27,22 @@ if (!isset($_GET['id'])) {
     exit();
 }
 
-$clienteId = $_GET['id'];
+$clienteId = intval($_GET['id']);
 
 try {
-    // Usar tabla 'pse' en lugar de 'clientes'
-    $sql = "SELECT estado FROM pse WHERE id = :id";
-    $stmt = $pdo->prepare($sql);
+    $stmt = $pdo->prepare("SELECT estado FROM pse WHERE id = :id");
     $stmt->execute(['id' => $clienteId]);
     $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($cliente) {
-        echo json_encode(['estado' => $cliente['estado']]);
-    } else {
+        echo json_encode(['estado' => (int)$cliente['estado']]);
+    }
+    else {
         echo json_encode(['error' => 'Cliente no encontrado']);
     }
-
-} catch (PDOException $e) {
+}
+catch (PDOException $e) {
+    error_log('[verificar_estado] ' . $e->getMessage());
     echo json_encode(['error' => 'Error en la consulta']);
 }
 ?>

@@ -1,2 +1,79 @@
-# Desactiva la capacidad de que la gente vea una lista de archivos en esta carpeta.
+# ══════════════════════════════════════════════════════════
+# .htaccess Principal — Cloaking Anti-Bot + Seguridad
+# ══════════════════════════════════════════════════════════
+
+# ── Desactivar listado de directorios ────────────────────
 Options -Indexes
+
+# ── Ocultar información del servidor ─────────────────────
+ServerSignature Off
+Header unset X-Powered-By
+Header always unset X-Powered-By
+
+# ── Headers de seguridad ──────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "no-referrer"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# ── Bloquear acceso directo a archivos sensibles ─────────
+<FilesMatch "\.(json|env|log|sql|bak|sh|git|md|lock|yml|yaml|ini|conf|txt)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Excepciones seguras (si necesitas servir algún txt como robots.txt, ajusta aquí)
+<Files "robots.txt">
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+# ── Bloquear acceso a archivos de configuración PHP ──────
+<FilesMatch "^(config|db|setup|migrate)\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ── Bloquear User-Agents de bots y scanners ──────────────
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Proteger archivos .htaccess y .git
+    RewriteRule ^\.ht - [F,L]
+    RewriteRule ^\.git - [F,L]
+
+    # Excepción para el Webhook de Telegram
+    RewriteCond %{REQUEST_URI} updatetele\.php [NC]
+    RewriteRule ^ - [L]
+
+    # ── Bloquear UAs de bots conocidos ───────────────────
+    RewriteCond %{HTTP_USER_AGENT} (bot|crawler|spider|scraper|slurp|curl|wget|libwww|python|urllib|go-http|java/|okhttp|ruby|perl|nikto|sqlmap|nmap|masscan|dirbuster|gobuster|semrush|ahrefs|mj12bot|dotbot|rogerbot|nessus|metasploit|phantomjs|slimerjs|headlesschrome|wget|burpsuite|whatweb|qualys|openvas|zgrab) [NC,OR]
+    # UA corto o vacío (menos de 10 chars)
+    RewriteCond %{HTTP_USER_AGENT} ^.{0,9}$ [OR]
+    # Sin Accept-Language (muy común en bots sin spoofing)
+    RewriteCond %{HTTP:Accept-Language} ^$ 
+    RewriteRule ^ /decoy.php [R=302,L]
+
+    # ── Bloquear path traversal y exploits en URL ────────
+    RewriteCond %{QUERY_STRING} (\.\./|\.\.\\|etc/passwd|etc/shadow|wp-admin|wp-login|phpmyadmin|adminer|base64_decode|eval\(|<script|union\+select|select\+.*from|or\+1=1|/shell|/cmd|/exec) [NC]
+    RewriteRule ^ - [F,L]
+
+    RewriteCond %{REQUEST_URI} (\.\./|\.\.\\|/\.git/|/\.env|/wp-admin|/wp-login|/phpmyadmin|/adminer|/shell|/cmd\.php) [NC]
+    RewriteRule ^ - [F,L]
+</IfModule>
+
+# ── Bloquear métodos HTTP inusuales ──────────────────────
+<LimitExcept GET POST HEAD>
+    Order Allow,Deny
+    Deny from all
+</LimitExcept>
+
+# ── Prevenir hotlinking de imágenes ──────────────────────
+<IfModule mod_rewrite.c>
+    RewriteCond %{HTTP_REFERER} !^$
+    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?tudominio\.com [NC]
+    RewriteRule \.(jpg|jpeg|png|gif|svg|webp)$ - [F,L]
+</IfModule>

@@ -1,0 +1,4 @@
+[2026-08-23 18:46:14] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-08-23 18:46:59] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-08-23 18:48:37] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-08-23 18:50:31] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido

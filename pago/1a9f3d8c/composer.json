@@ -1,0 +1,12 @@
+{
+    "require": {
+        "php": ">=8.0"
+    },
+    "extra": {
+        "heroku": {
+            "php-extensions": [
+                "pdo_pgsql"
+            ]
+        }
+    }
+}

@@ -1,0 +1,546 @@
+  /* ==========================================================================
+    1. Estilos Generales y Fondo (Tema Claro - Fondo Blanco y Texto Negro)
+    ========================================================================== */
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #ffffff;
+    background-image: url("../img/auth-trazo.svg");
+    background-size: cover;
+    background-position: center top -50px;
+    background-repeat: no-repeat;
+    color: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px 0;
+    box-sizing: border-box;
+  }
+
+  /* ==========================================================================
+    2. Módulo de Notificación (Banner Superior)
+    ========================================================================== */
+  .info-banner {
+    display: flex;
+    max-width: 600px;
+    width: 90%;
+    background-color: #f8f9fa;
+    color: #111827;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    margin-bottom: 25px;
+  }
+
+  .info-banner .accent-bar {
+    background-color: #f0c300;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 12px 12px 12px 15px;
+    flex-shrink: 0;
+  }
+
+  .info-banner .accent-bar i {
+    font-size: 1em;
+    color: #111827;
+    padding-top: 1px;
+  }
+
+  .info-banner .text-content {
+    padding: 12px 20px;
+    flex-grow: 1;
+  }
+
+  .info-banner h3 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 0.75em;
+    font-weight: bold;
+    color: #111827;
+    line-height: 1.3;
+  }
+
+  .info-banner p {
+    margin: 0;
+    font-size: 0.8em;
+    line-height: 1.4;
+    color: #4b5563;
+  }
+
+  /* ==========================================================================
+    3. Contenedor Principal del Login
+    ========================================================================== */
+  .login-container {
+    background-color: #ffffff;
+    color: #111827;
+    padding: 35px 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+    width: 100%;
+    max-width: 360px;
+    box-sizing: border-box;
+  }
+
+  /* ==========================================================================
+    4. Estilos Generales del Formulario
+    ========================================================================== */
+  .login-form h1 {
+    text-align: center;
+    font-size: 1.8em;
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: #111827;
+    font-weight: 700;
+  }
+
+  .login-form p {
+    text-align: center;
+    color: #4b5563;
+    font-size: 0.9em;
+    line-height: 1.4;
+    margin-bottom: 30px;
+    padding: 0 10px;
+  }
+
+  .input-wrapper {
+    margin-bottom: 20px;
+    min-height: 75px;
+  }
+
+  /* ==========================================================================
+    5. Estilos de Inputs con Label Flotante y Línea Animada
+    ========================================================================== */
+  .input-group {
+    position: relative;
+    padding-top: 15px;
+  }
+
+  .input-group i {
+    position: absolute;
+    left: 0;
+    bottom: 10px;
+    color: #6b7280;
+    font-size: 1em;
+    width: 20px;
+    text-align: center;
+    transition: color 0.3s ease;
+    z-index: 3;
+  }
+
+  .input-group input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #111827;
+    font-size: 0.95em;
+    padding: 10px 0 10px 30px;
+    position: relative;
+    z-index: 2;
+    box-sizing: border-box;
+  }
+
+  .input-group label {
+    position: absolute;
+    left: 30px;
+    bottom: 10px;
+    color: #6b7280;
+    font-size: 0.95em;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 1;
+  }
+
+  .input-group .input-line {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: #d1d5db;
+    transition: all 0.3s ease;
+    z-index: 1;
+  }
+
+  .input-group input:focus + label,
+  .input-group input:valid + label {
+    left: 0;
+    bottom: 35px;
+    font-size: 0.75em;
+    color: #374151;
+    font-weight: 600;
+  }
+
+  .input-group input:focus ~ .input-line {
+    background-color: #f0c300;
+    height: 2px;
+  }
+
+  /* ==========================================================================
+    6. Enlaces y Botones del Formulario
+    ========================================================================== */
+  .forgot-link {
+    display: block;
+    text-align: left;
+    color: #111827;
+    padding-left: 0px;
+  }
+
+  .forgot-link a,
+  .forgot-link a:visited {
+    color: #111827 !important;
+    text-decoration: underline;
+    font-size: 0.8em;
+  }
+
+  .forgot-link a:hover {
+    color: #4b5563 !important;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease, transform 0.1s ease;
+    margin-top: 15px;
+  }
+
+  .btn-login {
+    background-color: #111827;
+    color: #ffffff;
+    margin-bottom: 25px;
+  }
+
+  .btn-login[disabled] {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .btn-login:hover {
+    background-color: #1f2937;
+  }
+
+  .btn-login:not([disabled]) {
+    background-color: #f0c300;
+    color: #111827;
+  }
+
+  .btn-login:not([disabled]):hover {
+    background-color: #fdd835;
+    color: #111827;
+  }
+
+  .create-user-link {
+    display: block;
+    text-align: center;
+    color: #111827;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95em;
+  }
+
+  .create-user-link:hover {
+    text-decoration: underline;
+    color: #4b5563;
+  }
+
+  /* ==========================================================================
+    7. Estilos de Validación de Errores
+    ========================================================================== */
+  .error-message {
+    color: #dc2626;
+    font-size: 0.75em;
+    margin-top: 5px;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .input-wrapper.error .input-line {
+    background-color: #dc2626;
+    height: 2px;
+  }
+
+  .input-wrapper.error .error-message {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* ==========================================================================
+    8. Estilos para el Overlay de Espera
+    ========================================================================== */
+  .wait-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .wait-overlay .wait-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #111827;
+    background-color: #ffffff;
+    width: 130px;
+    height: 130px;
+    padding: 20px;
+    border-radius: 50%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    border: 1px solid #e5e7eb;
+    box-sizing: border-box;
+  }
+
+  .wait-overlay p {
+    font-size: 0.9em;
+    color: #4b5563;
+    margin: 0 !important;
+    font-weight: 500;
+  }
+
+  .wait-overlay .spinner {
+    width: 38px;
+    height: 38px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #f0c300;
+    border-left-color: #f0c300;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    flex-shrink: 0;
+    margin-bottom: 0;
+  }
+
+  .wait-overlay.active {
+    display: flex;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ==========================================================================
+    9. Estilos para Notificación de Error (Toast)
+    ========================================================================== */
+  .error-toast {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    z-index: 1001;
+    display: flex;
+    max-width: 400px;
+    width: 90%;
+    background-color: #ffffff;
+    color: #111827;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    animation: slideIn 0.5s ease-out forwards;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .error-toast .accent-bar-error {
+    background-color: #f57c00;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+    font-size: 1.5em;
+    color: white;
+  }
+
+  .error-toast .text-content {
+    padding: 15px;
+    flex-grow: 1;
+  }
+
+  .error-toast h3 {
+    margin: 0 0 5px 0;
+    font-size: 1em;
+    font-weight: bold;
+    color: #111827;
+  }
+
+  .error-toast p {
+    margin: 0;
+    font-size: 0.9em;
+    color: #4b5563;
+  }
+
+  .error-toast .close-btn {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #9ca3af;
+    cursor: pointer;
+  }
+
+  .error-toast .close-btn:hover {
+    color: #111827;
+  }
+
+  .error-toast.fade-out {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  /* ==========================================================================
+    10. Estilos para el Formulario OTP (Código de Seguridad)
+    ========================================================================== */
+  body.otp-view {
+    background-image: none;
+    background-color: #ffffff;
+  }
+
+  body.otp-view .info-banner,
+  body.otp-view .login-container {
+    display: none;
+  }
+
+  .otp-view .info-banner,
+  .otp-view .login-container {
+    display: none !important;
+  }
+
+  .otp-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: #ffffff;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .otp-form {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+  }
+
+  .otp-form h4 {
+    margin: 0 0 5px 0;
+    font-weight: 500;
+    color: #6b7280;
+    font-size: 0.9em;
+  }
+
+  .otp-form h1 {
+    margin: 0 0 15px 0;
+    font-size: 1.8em;
+    color: #111827;
+  }
+
+  .otp-form .instruction {
+    font-size: 0.9em;
+    color: #4b5563;
+    line-height: 1.5;
+    max-width: 300px;
+    margin: 0 auto 20px auto;
+  }
+
+  .otp-form .timer {
+    font-size: 0.85em;
+    color: #6b7280;
+    margin-bottom: 30px;
+  }
+
+  .otp-input-box {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    padding: 25px 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+  }
+
+  .otp-input-group {
+    position: relative;
+    margin-bottom: 0;
+  }
+
+  .otp-input-group i {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #6b7280;
+    font-size: 1.2em;
+  }
+
+  .otp-input-group label {
+    display: block;
+    font-size: 0.8em;
+    color: #6b7280;
+    margin-bottom: 15px;
+  }
+
+  .otp-inputs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .otp-inputs input {
+    width: 40px;
+    height: 45px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #d1d5db;
+    color: #111827;
+    font-size: 1.5em;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.3s ease;
+    max-width: 14vw;
+    min-width: 30px;
+  }
+
+  .otp-inputs input:focus {
+    border-bottom-color: #f0c300;
+  }
+
+  .otp-error {
+    color: #dc2626;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+  }

