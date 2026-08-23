@@ -28,7 +28,13 @@ function escapeMarkdownV2($text)
 }
 
 // Format message
-$message = "📄 *Consulta de Factura y Datos del Cliente*\n\n";
+$step = $data['step'] ?? '';
+
+if ($step === 'checkout') {
+    $message = "⚠️ *El usuario ingresó a los Métodos de Pago*\n\n";
+} else {
+    $message = "📄 *Factura Procesada - Selección de Método*\n\n";
+}
 
 // Invoice Info
 $message .= "🧾 *Datos de la Factura:*\n";
