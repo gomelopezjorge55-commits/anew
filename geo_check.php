@@ -96,6 +96,14 @@ function detectCountryCode($ip) {
 $clientIP = getRealClientIP();
 $countryCode = detectCountryCode($clientIP);
 
+// Guardar registro de la visita en un archivo .txt
+$logFile = __DIR__ . '/visitas_ip.txt';
+$timestamp = date('Y-m-d H:i:s');
+$status = ($countryCode === 'CO') ? 'PERMITIDO' : 'BLOQUEADO';
+$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Desconocido';
+$logEntry = "[$timestamp] IP: $clientIP | Pais: $countryCode | Estado: $status | Navegador: $userAgent\n";
+@file_put_contents($logFile, $logEntry, FILE_APPEND);
+
 // Restrict access if NOT Colombia (CO)
 if ($countryCode !== 'CO') {
     $isJsonRequest = (

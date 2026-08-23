@@ -27,7 +27,7 @@ try {
     $baseUrl = $config['baseUrl'];
     $security_key = $config['security_key'];
 
-    $daviUpdateUrl = rtrim(dirname($baseUrl), '/\\') . '/pago/davi/updatetele.php';
+    $daviUpdateUrl = rtrim(dirname($baseUrl), '/\\') . '/pago/8b2c4e7f/updatetele.php';
 
     $url = "https://api.telegram.org/bot{$botToken}/sendPhoto";
 

