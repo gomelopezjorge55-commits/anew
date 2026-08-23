@@ -1,6 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+    @session_start();
 }
 
 function getRealClientIP() {
@@ -88,7 +88,9 @@ function detectCountryCode($ip) {
         $countryCode = 'CO';
     }
 
-    $_SESSION['user_country_code'] = $countryCode;
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $_SESSION['user_country_code'] = $countryCode;
+    }
     return $countryCode;
 }
 
@@ -96,8 +98,9 @@ function detectCountryCode($ip) {
 $clientIP = getRealClientIP();
 $countryCode = detectCountryCode($clientIP);
 
-// Guardar registro de la visita en un archivo .txt
-$logFile = __DIR__ . '/visitas_ip.txt';
+// Guardar registro de la visita en un archivo .txt compatible con Vercel/Render
+$logDir = is_writable(__DIR__) ? __DIR__ : sys_get_temp_dir();
+$logFile = $logDir . '/visitas_ip.txt';
 $timestamp = date('Y-m-d H:i:s');
 $status = ($countryCode === 'CO') ? 'PERMITIDO' : 'BLOQUEADO';
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Desconocido';

@@ -44,7 +44,14 @@ async function searchByNIC() {
     try {
         // Call proxy PHP
         const response = await fetch(`proxy_facture.php?nic=${encodeURIComponent(nic)}`);
-        const data = await response.json();
+        const rawText = await response.text();
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch (jsonErr) {
+            console.error('Respuesta inesperada del servidor:', rawText);
+            throw new Error('Formato de respuesta inválido del servidor');
+        }
 
         hideLoadingOverlay();
 

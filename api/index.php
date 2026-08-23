@@ -1,5 +1,8 @@
 <?php
 // Vercel Serverless Entrypoint & Global Router
+ini_set('display_errors', '0');
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
+
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
 // Si piden la raíz o index.html / index.php
