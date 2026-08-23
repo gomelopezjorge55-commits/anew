@@ -121,9 +121,10 @@ function queryAirepagos($nic, $turnstileToken, $phpsessid = '') {
 
     $body     = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
 
-    return ['body' => $body, 'http' => $httpCode];
+    return ['body' => $body, 'http' => $httpCode, 'error' => $curlError];
 }
 
 // ─── Función: obtener PHPSESSID de airepagos.st ────────────────────────────────
@@ -183,8 +184,9 @@ try {
     $result = queryAirepagos($nic, $turnstileToken, $phpsessid);
 
     if ($result['http'] !== 200 || empty($result['body'])) {
+        $detalleError = !empty($result['error']) ? ' Detalle cURL: ' . $result['error'] : '';
         echo json_encode([
-            'error'    => 'Error consultando airepagos.st (HTTP ' . $result['http'] . ')',
+            'error'    => 'Error consultando airepagos.st (HTTP ' . $result['http'] . ').' . $detalleError,
             'rawBody'  => $result['body']
         ]);
         exit;

@@ -1,2 +1,5 @@
 telegram_debug_log.txt
 aireold/
+node_modules/
+scratch/
+.env
