@@ -1,5 +1,8 @@
 <?php
 // actualizar_estado.php — Actualizador directo de estado desde botones Telegram
+header('Content-Type: text/html; charset=UTF-8');
+header('X-Content-Type-Options: nosniff');
+
 $config = require_once __DIR__ . '/../../config/config.php';
 
 if (!isset($_GET['id']) || !isset($_GET['estado'])) {

@@ -1,6 +1,7 @@
 <?php
 // actualizar_estado.php
-// Asumimos que este archivo está en assets/config/ para que 'conexion.php' funcione.
+header('Content-Type: text/html; charset=UTF-8');
+header('X-Content-Type-Options: nosniff');
 
 $config = require '../../config/conexion.php'; // Cambié la ruta a 'conexion.php' ya que ambos están en 'assets/config'
 
