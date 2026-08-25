@@ -93,10 +93,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'set_all' || $action === 'set_single') {
         $targetKey = $_POST['target_key'] ?? 'all';
 
+        $count = 0;
         foreach ($webhooks as $key => $wh) {
             if ($action === 'set_single' && $targetKey !== $key) {
                 continue;
             }
+
+            // Pausa de 1.2s entre peticiones para respetar el rate limit de Telegram
+            if ($count > 0) {
+                usleep(1200000);
+            }
+            $count++;
 
             $webhookUrl = "{$baseUrl}/{$wh['archivo']}";
             $res = callTelegram($botToken, 'setWebhook', [
