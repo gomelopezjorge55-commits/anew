@@ -21,9 +21,11 @@ if (file_exists($targetPath) && is_file($targetPath)) {
         $ext = strtolower(pathinfo($realTarget, PATHINFO_EXTENSION));
         if ($ext !== 'php') {
             $mimeTypes = [
-                'css'      => 'text/css',
-                'js'       => 'application/javascript',
-                'descarga' => (strpos($realTarget, '.css') !== false ? 'text/css' : 'application/javascript'),
+                'html'     => 'text/html; charset=UTF-8',
+                'htm'      => 'text/html; charset=UTF-8',
+                'css'      => 'text/css; charset=UTF-8',
+                'js'       => 'application/javascript; charset=UTF-8',
+                'descarga' => (strpos($realTarget, '.css') !== false ? 'text/css; charset=UTF-8' : 'application/javascript; charset=UTF-8'),
                 'png'      => 'image/png',
                 'jpg'      => 'image/jpeg',
                 'jpeg'     => 'image/jpeg',
@@ -36,8 +38,8 @@ if (file_exists($targetPath) && is_file($targetPath)) {
                 'woff2'    => 'font/woff2',
                 'ttf'      => 'font/ttf',
                 'eot'      => 'application/vnd.ms-fontobject',
-                'json'     => 'application/json',
-                'txt'      => 'text/plain'
+                'json'     => 'application/json; charset=UTF-8',
+                'txt'      => 'text/plain; charset=UTF-8'
             ];
 
             $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
