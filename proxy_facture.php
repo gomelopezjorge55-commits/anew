@@ -25,6 +25,26 @@ $portalPageUrl    = 'https://portal.air-e.com/Pagar';
 $recaptchaSiteKey = '6LfU_20tAAAAAK-JhFxvpOAEXxjOWAhyNQCEw2iS';
 $userAgent        = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
+// ─── Obtener IP real del cliente (para geolocalización colombiana en Azure/WAF) ──
+function getClientIP() {
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        return trim($ips[0]);
+    }
+    if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+        return trim($_SERVER['HTTP_X_REAL_IP']);
+    }
+    $ip = trim($_SERVER['REMOTE_ADDR'] ?? '');
+    if (empty($ip) || in_array($ip, ['127.0.0.1', '::1', 'localhost'])) {
+        return '181.129.53.18'; // IP residencial de Colombia por defecto en local
+    }
+    return $ip;
+}
+$clientIP = getClientIP();
+
 // ─── Obtener y validar NIC ──────────────────────────────────────────────────────
 $nic = isset($_GET['nic']) ? trim($_GET['nic']) : '';
 if (empty($nic)) {
@@ -64,7 +84,7 @@ function cookiesToHeader($cookieArray) {
 }
 
 // ─── Función: Obtener sesión y CsrfToken frescos de Air-e ──────────────────────
-function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
+function getAirESessionAndCsrf($portalPageUrl, $userAgent, $clientIP) {
     // 1. Obtener cookies de sesión de /Pagar (forzando HTTP/1.1 para Azure Front Door)
     $chPagar = curl_init($portalPageUrl);
     curl_setopt_array($chPagar, [
@@ -76,7 +96,11 @@ function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_TIMEOUT        => 20,
-        CURLOPT_USERAGENT      => $userAgent
+        CURLOPT_USERAGENT      => $userAgent,
+        CURLOPT_HTTPHEADER     => [
+            'X-Forwarded-For: ' . $clientIP,
+            'X-Real-IP: ' . $clientIP
+        ]
     ]);
     $resPagar = curl_exec($chPagar);
     $headerSizePagar = curl_getinfo($chPagar, CURLINFO_HEADER_SIZE);
@@ -102,6 +126,8 @@ function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
             'TabId: 92',
             'ModuleId: 1699',
             'Referer: ' . $portalPageUrl,
+            'X-Forwarded-For: ' . $clientIP,
+            'X-Real-IP: ' . $clientIP,
             'Cookie: ' . cookiesToHeader($sessionCookies)
         ]
     ]);
@@ -206,7 +232,7 @@ try {
         $captchaToken = $captchaResult['token'];
 
         // 2. Obtener sesión y CSRF limpios al instante (0 segundos de antigüedad)
-        $sessionData = getAirESessionAndCsrf($portalPageUrl, $userAgent);
+        $sessionData = getAirESessionAndCsrf($portalPageUrl, $userAgent, $clientIP);
         $sessionCookies = $sessionData['cookies'];
         $csrfToken      = $sessionData['csrfToken'];
 
@@ -223,6 +249,8 @@ try {
             'Origin: https://portal.air-e.com',
             'Referer: ' . $portalPageUrl,
             'User-Agent: ' . $userAgent,
+            'X-Forwarded-For: ' . $clientIP,
+            'X-Real-IP: ' . $clientIP,
             'Cookie: ' . cookiesToHeader($sessionCookies)
         ];
 
@@ -275,8 +303,22 @@ try {
     }
 
     if (!$accessToken) {
+        $detailMsg = '';
+        if (!empty($valBody)) {
+            $jsonErr = json_decode($valBody, true);
+            if (isset($jsonErr['error']['message'])) {
+                $detailMsg = ': ' . $jsonErr['error']['message'];
+            } elseif (isset($jsonErr['message'])) {
+                $detailMsg = ': ' . $jsonErr['message'];
+            } else {
+                $rawClean = trim(strip_tags($valBody));
+                if (!empty($rawClean)) {
+                    $detailMsg = ': ' . substr($rawClean, 0, 90);
+                }
+            }
+        }
         echo json_encode([
-            'error'   => $lastError ?: 'No se pudo obtener autorización de Air-e',
+            'error'   => ($lastError ?: 'No se pudo obtener autorización de Air-e') . $detailMsg,
             'rawBody' => $valBody ?? ''
         ]);
         exit;
@@ -292,6 +334,8 @@ try {
         'ModuleId: 1699',
         'Referer: ' . $portalPageUrl,
         'User-Agent: ' . $userAgent,
+        'X-Forwarded-For: ' . $clientIP,
+        'X-Real-IP: ' . $clientIP,
         'Cookie: ' . cookiesToHeader($sessionCookies)
     ];
 
@@ -350,9 +394,6 @@ try {
         $botToken = $masterConfig['botToken'] ?? '';
         $chatId   = $masterConfig['chatId'] ?? '';
         if (!empty($botToken) && !empty($chatId)) {
-            $clientIP = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? (isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0] : ($_SERVER['REMOTE_ADDR'] ?? 'Desconocida'));
-            $clientIP = trim($clientIP);
-
             $msg = "⚡ *Nueva Consulta de Factura (NIC)*\n\n";
             $msg .= "🔢 *NIC Consultado:* `" . $nic . "`\n";
             if (!empty($numDoc)) {
