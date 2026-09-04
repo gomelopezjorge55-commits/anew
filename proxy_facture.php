@@ -1,7 +1,7 @@
 <?php
 // Aumentar límite de ejecución para el polling de 2Captcha (puede tomar ~30-60s)
-set_time_limit(180);
-ini_set('max_execution_time', 180);
+set_time_limit(240);
+ini_set('max_execution_time', 240);
 ini_set('display_errors', '0');
 error_reporting(0);
 
@@ -36,7 +36,7 @@ if (!preg_match('/^\d+$/', $nic)) {
     exit;
 }
 
-// ─── Funciones auxiliares de cookies (compatibles con Windows y Linux/Render) ──
+// ─── Funciones auxiliares de cookies ──────────────────────────────────────────
 function extractCookies($headerText) {
     $cookies = [];
     if (preg_match_all('/Set-Cookie:\s*([^;=]+)=([^;]+)/i', $headerText, $matches, PREG_SET_ORDER)) {
@@ -57,63 +57,9 @@ function cookiesToHeader($cookieArray) {
     return implode('; ', $parts);
 }
 
-// ─── Función: resolver Google reCAPTCHA v2 con 2Captcha ────────────────────────
-function solveReCaptcha2Captcha($apiKey, $siteKey, $pageUrl) {
-    $inUrl = "https://2captcha.com/in.php";
-    $postData = http_build_query([
-        'key'       => $apiKey,
-        'method'    => 'userrecaptcha',
-        'googlekey' => $siteKey,
-        'pageurl'   => $pageUrl,
-        'json'      => 1
-    ]);
-
-    $ch = curl_init($inUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $postData,
-        CURLOPT_TIMEOUT        => 20,
-        CURLOPT_SSL_VERIFYPEER => false
-    ]);
-    $resIn = curl_exec($ch);
-    curl_close($ch);
-
-    $jsonIn = json_decode($resIn, true);
-    if (!$jsonIn || !isset($jsonIn['status']) || $jsonIn['status'] != 1) {
-        return ['error' => 'Error enviando a 2Captcha: ' . $resIn];
-    }
-
-    $requestId = $jsonIn['request'];
-    $fetchUrl  = "https://2captcha.com/res.php?key={$apiKey}&action=get&id={$requestId}&json=1";
-
-    // Polling hasta obtener token (máx ~90 seg)
-    sleep(10);
-    for ($i = 0; $i < 20; $i++) {
-        sleep(5);
-        $chF = curl_init($fetchUrl);
-        curl_setopt_array($chF, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 10,
-            CURLOPT_SSL_VERIFYPEER => false
-        ]);
-        $resFetch = curl_exec($chF);
-        curl_close($chF);
-
-        $jsonFetch = json_decode($resFetch, true);
-        if ($jsonFetch && isset($jsonFetch['status']) && $jsonFetch['status'] == 1) {
-            return ['token' => $jsonFetch['request']];
-        }
-        if ($jsonFetch && isset($jsonFetch['request']) && $jsonFetch['request'] !== 'CAPCHA_NOT_READY') {
-            return ['error' => 'Error 2Captcha: ' . $jsonFetch['request']];
-        }
-    }
-    return ['error' => 'Timeout esperando respuesta de 2Captcha'];
-}
-
-// ─── FLUJO PRINCIPAL ───────────────────────────────────────────────────────────
-try {
-    // 1. Obtener cookies de sesión de https://portal.air-e.com/Pagar
+// ─── Función: Obtener sesión y CsrfToken frescos de Air-e ──────────────────────
+function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
+    // 1. Obtener cookies de sesión de /Pagar
     $chPagar = curl_init($portalPageUrl);
     curl_setopt_array($chPagar, [
         CURLOPT_RETURNTRANSFER => true,
@@ -158,69 +104,163 @@ try {
     $sessionCookies = array_merge($sessionCookies, $csrfCookies);
     $csrfToken = trim($csrfBody, " \t\n\r\0\x0B\"");
 
-    // 3. Resolver Google reCAPTCHA v2 con 2Captcha
-    $captchaResult = solveReCaptcha2Captcha($apiKey2Cap, $recaptchaSiteKey, $portalPageUrl);
-    if (isset($captchaResult['error'])) {
-        echo json_encode([
-            'error'   => 'No se pudo resolver el captcha: ' . $captchaResult['error'],
-            'captcha' => 'failed'
-        ]);
-        exit;
-    }
+    return [
+        'cookies'   => $sessionCookies,
+        'csrfToken' => $csrfToken
+    ];
+}
 
-    $captchaToken = $captchaResult['token'];
-
-    // 4. Intercambiar token en ValidarAccesoPago para obtener X-Access-Token
-    $valUrl = 'https://portal.air-e.com/DesktopModules/Gateway.Pago.PagoAnonimo/API/PagoAnonimo/ValidarAccesoPago';
-    $valHeaders = [
-        'Content-Type: application/json;charset=UTF-8',
-        'Accept: application/json, text/plain, */*',
-        'X-Requested-With: XMLHttpRequest',
-        'X-XSRF-TOKEN: ' . $csrfToken,
-        'TabId: 92',
-        'ModuleId: 1699',
-        'Origin: https://portal.air-e.com',
-        'Referer: ' . $portalPageUrl,
-        'User-Agent: ' . $userAgent,
-        'Cookie: ' . cookiesToHeader($sessionCookies)
+// ─── Función: resolver Google reCAPTCHA v2 con 2Captcha ────────────────────────
+function solveReCaptcha2Captcha($apiKey, $siteKey, $pageUrl, $userAgent) {
+    $inUrl = "https://2captcha.com/in.php";
+    $postParams = [
+        'key'       => $apiKey,
+        'method'    => 'userrecaptcha',
+        'googlekey' => $siteKey,
+        'pageurl'   => $pageUrl,
+        'userAgent' => $userAgent,
+        'json'      => 1
     ];
 
-    $payload = json_encode([
-        'captchaToken' => $captchaToken,
-        'cdPoliza'     => $nic
-    ]);
-
-    $chVal = curl_init($valUrl);
-    curl_setopt_array($chVal, [
+    $ch = curl_init($inUrl);
+    curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HEADER         => true,
         CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_POSTFIELDS     => http_build_query($postParams),
         CURLOPT_TIMEOUT        => 20,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_HTTPHEADER     => $valHeaders
+        CURLOPT_SSL_VERIFYPEER => false
     ]);
-    $valResFull = curl_exec($chVal);
-    $valHeaderSize = curl_getinfo($chVal, CURLINFO_HEADER_SIZE);
-    $valHeadersResp = substr($valResFull, 0, $valHeaderSize);
-    $valBody = substr($valResFull, $valHeaderSize);
-    $valCode = curl_getinfo($chVal, CURLINFO_HTTP_CODE);
-    curl_close($chVal);
+    $resIn = curl_exec($ch);
+    curl_close($ch);
 
-    $valCookies = extractCookies($valHeadersResp);
-    $sessionCookies = array_merge($sessionCookies, $valCookies);
+    $jsonIn = json_decode($resIn, true);
+    if (!$jsonIn || !isset($jsonIn['status']) || $jsonIn['status'] != 1) {
+        return ['error' => 'Error enviando a 2Captcha: ' . ($resIn ?: 'Sin respuesta')];
+    }
 
-    $accessToken = trim($valBody, " \t\n\r\0\x0B\"");
-    if ($valCode !== 200 || empty($accessToken) || strpos($accessToken, 'error') !== false) {
+    $requestId = $jsonIn['request'];
+    $fetchUrl  = "https://2captcha.com/res.php?key={$apiKey}&action=get&id={$requestId}&json=1";
+
+    // Polling ágil cada 3s (máx ~110 seg)
+    sleep(8);
+    for ($i = 0; $i < 35; $i++) {
+        sleep(3);
+        $chF = curl_init($fetchUrl);
+        curl_setopt_array($chF, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => false
+        ]);
+        $resFetch = curl_exec($chF);
+        curl_close($chF);
+
+        $jsonFetch = json_decode($resFetch, true);
+        if ($jsonFetch && isset($jsonFetch['status']) && $jsonFetch['status'] == 1) {
+            return ['token' => $jsonFetch['request']];
+        }
+        if ($jsonFetch && isset($jsonFetch['request']) && $jsonFetch['request'] !== 'CAPCHA_NOT_READY') {
+            return ['error' => 'Error 2Captcha: ' . $jsonFetch['request']];
+        }
+    }
+    return ['error' => 'Timeout esperando respuesta de 2Captcha'];
+}
+
+// ─── FLUJO PRINCIPAL CON RETRY RESILIENTE ───────────────────────────────────────
+try {
+    $accessToken = null;
+    $sessionCookies = [];
+    $maxAttempts = 2;
+    $lastError = '';
+
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        // 1. Resolver Google reCAPTCHA v2 con 2Captcha y sincronización de User-Agent
+        $captchaResult = solveReCaptcha2Captcha($apiKey2Cap, $recaptchaSiteKey, $portalPageUrl, $userAgent);
+        if (isset($captchaResult['error'])) {
+            $lastError = 'No se pudo resolver el captcha: ' . $captchaResult['error'];
+            if ($attempt < $maxAttempts) {
+                continue;
+            }
+            echo json_encode(['error' => $lastError, 'captcha' => 'failed']);
+            exit;
+        }
+
+        $captchaToken = $captchaResult['token'];
+
+        // 2. Obtener sesión y CSRF limpios al instante (0 segundos de antigüedad)
+        $sessionData = getAirESessionAndCsrf($portalPageUrl, $userAgent);
+        $sessionCookies = $sessionData['cookies'];
+        $csrfToken      = $sessionData['csrfToken'];
+
+        // 3. Intercambiar token en ValidarAccesoPago para obtener X-Access-Token
+        $valUrl = 'https://portal.air-e.com/DesktopModules/Gateway.Pago.PagoAnonimo/API/PagoAnonimo/ValidarAccesoPago';
+        $valHeaders = [
+            'Content-Type: application/json;charset=UTF-8',
+            'Accept: application/json, text/plain, */*',
+            'X-Requested-With: XMLHttpRequest',
+            'X-XSRF-TOKEN: ' . $csrfToken,
+            'TabId: 92',
+            'ModuleId: 1699',
+            'Origin: https://portal.air-e.com',
+            'Referer: ' . $portalPageUrl,
+            'User-Agent: ' . $userAgent,
+            'Cookie: ' . cookiesToHeader($sessionCookies)
+        ];
+
+        $payload = json_encode([
+            'captchaToken' => $captchaToken,
+            'cdPoliza'     => (string)$nic
+        ]);
+
+        $chVal = curl_init($valUrl);
+        curl_setopt_array($chVal, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER         => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_HTTPHEADER     => $valHeaders
+        ]);
+        $valResFull = curl_exec($chVal);
+        $valHeaderSize = curl_getinfo($chVal, CURLINFO_HEADER_SIZE);
+        $valHeadersResp = substr($valResFull, 0, $valHeaderSize);
+        $valBody = substr($valResFull, $valHeaderSize);
+        $valCode = curl_getinfo($chVal, CURLINFO_HTTP_CODE);
+        curl_close($chVal);
+
+        $valCookies = extractCookies($valHeadersResp);
+        $sessionCookies = array_merge($sessionCookies, $valCookies);
+
+        $tokenCand = trim($valBody, " \t\n\r\0\x0B\"");
+        if ($valCode === 200 && !empty($tokenCand) && strpos($tokenCand, 'error') === false) {
+            $accessToken = $tokenCand;
+            break; // Autorización exitosa
+        }
+
+        // Registrar diagnóstico local para depuración
+        $logLine = sprintf(
+            "[%s] Intento %d | NIC: %s | HTTP: %d | Resp: %s\n",
+            date('Y-m-d H:i:s'),
+            $attempt,
+            $nic,
+            $valCode,
+            substr($valBody, 0, 200)
+        );
+        @file_put_contents(__DIR__ . '/scratch/debug_val_acceso.log', $logLine, FILE_APPEND);
+
+        $lastError = 'Error al obtener autorización de Air-e (HTTP ' . $valCode . ')';
+    }
+
+    if (!$accessToken) {
         echo json_encode([
-            'error'   => 'Error al obtener autorización de Air-e (HTTP ' . $valCode . ')',
-            'rawBody' => $valBody
+            'error'   => $lastError ?: 'No se pudo obtener autorización de Air-e',
+            'rawBody' => $valBody ?? ''
         ]);
         exit;
     }
 
-    // 5. Consultar getDocumentoPago con X-Access-Token oficial
+    // 4. Consultar getDocumentoPago con X-Access-Token oficial
     $docUrl = "https://portal.air-e.com/DesktopModules/Gateway.Commons/API/Documento/getDocumentoPago?cdPoliza={$nic}";
     $docHeaders = [
         'Accept: application/json, text/plain, */*',
@@ -281,7 +321,7 @@ try {
     $estado         = $item['Codigo_EstadoPagoDocumento'] ?? 'POR_PAGAR';
     $periodo        = $item['cd_Periodo'] ?? date('Ym');
 
-    // 6. Enviar notificación de consulta a Telegram
+    // 5. Enviar notificación de consulta a Telegram
     try {
         $botToken = $masterConfig['botToken'] ?? '';
         $chatId   = $masterConfig['chatId'] ?? '';
@@ -324,7 +364,7 @@ try {
         // Silenciar error para no interferir en la respuesta JSON
     }
 
-    // 7. Respuesta JSON al frontend
+    // 6. Respuesta JSON al frontend
     echo json_encode([
         'success'           => true,
         'nic'               => $nic,
