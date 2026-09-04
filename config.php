@@ -25,8 +25,8 @@ if (getenv('DATABASE_URL')) {
 }
 
 return [
-    'botToken' => getenv('BOT_TOKEN') ?: '8563506224:AAHyMt9lKuRdadu3HqXMN3LMA3oukd8P-dk',
-    'chatId' => getenv('CHAT_ID') ?: '-5124246692',
+    'botToken' => getenv('BOT_TOKEN') ?: '8635283514:AAFh6dwBMtmuvK5FgLgj4eyW6PV1Gciktqk',
+    'chatId' => getenv('CHAT_ID') ?: '-1004376731124',
     'db_host' => $db_host,
     'db_user' => $db_user,
     'db_pass' => $db_pass,

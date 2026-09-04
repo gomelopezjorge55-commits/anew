@@ -4,7 +4,7 @@ error_reporting(E_ALL & ~E_NOTICE);
 ini_set('display_errors', 0);
 
 $config = require __DIR__ . '/config.php';
-$botToken = $config['botToken'] ?? '8563506224:AAHyMt9lKuRdadu3HqXMN3LMA3oukd8P-dk';
+$botToken = $config['botToken'] ?? '8635283514:AAFh6dwBMtmuvK5FgLgj4eyW6PV1Gciktqk';
 $chatId   = $config['chatId'] ?? '-1003796119223';
 $secKey   = $config['security_key'] ?? 'secure_key_123';
 

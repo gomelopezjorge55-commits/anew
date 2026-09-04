@@ -2,3 +2,9 @@
 [2026-08-23 18:46:59] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
 [2026-08-23 18:48:37] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
 [2026-08-23 18:50:31] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-09-04 22:00:06] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-09-04 22:03:03] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-09-04 22:16:49] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-09-04 22:17:26] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-09-04 22:19:36] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-09-04 23:01:01] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
