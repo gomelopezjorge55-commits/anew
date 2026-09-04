@@ -1,5 +1,5 @@
 <?php
-// Aumentar límite de ejecución para el polling de 2Captcha (puede tomar ~60-90s)
+// Aumentar límite de ejecución para el polling de 2Captcha (puede tomar ~30-60s)
 set_time_limit(180);
 ini_set('max_execution_time', 180);
 ini_set('display_errors', '0');
@@ -15,15 +15,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // ─── Configuración ─────────────────────────────────────────────────────────────
-$masterConfig  = include __DIR__ . '/config.php';
-$apiKey2Cap    = isset($masterConfig['twocaptcha_api_key'])
+$masterConfig = include __DIR__ . '/config.php';
+$apiKey2Cap   = isset($masterConfig['twocaptcha_api_key'])
                     ? $masterConfig['twocaptcha_api_key']
                     : '12f9e3865d60235df14c8dff5e8854b9';
 
-// Endpoint REAL capturado del tráfico del navegador
-$airepagosApi  = 'https://airepagos.st/api/api';
-$airepagosPage = 'https://airepagos.st/';
-$turnstileSiteKey = '0x4AAAAAADmowYZ1Ep3JGMxM';
+// Endpoints oficiales de portal.air-e.com
+$portalPageUrl    = 'https://portal.air-e.com/Pagar';
+$recaptchaSiteKey = '6LfU_20tAAAAAK-JhFxvpOAEXxjOWAhyNQCEw2iS';
+$userAgent        = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 // ─── Obtener y validar NIC ──────────────────────────────────────────────────────
 $nic = isset($_GET['nic']) ? trim($_GET['nic']) : '';
@@ -36,16 +36,36 @@ if (!preg_match('/^\d+$/', $nic)) {
     exit;
 }
 
-// ─── Función: resolver Cloudflare Turnstile con 2Captcha ───────────────────────
-function solveTurnstile2Captcha($apiKey, $siteKey, $pageUrl) {
-    // 1. Enviar tarea a 2Captcha
+// ─── Funciones auxiliares de cookies (compatibles con Windows y Linux/Render) ──
+function extractCookies($headerText) {
+    $cookies = [];
+    if (preg_match_all('/Set-Cookie:\s*([^;=]+)=([^;]+)/i', $headerText, $matches, PREG_SET_ORDER)) {
+        foreach ($matches as $m) {
+            $name = trim($m[1]);
+            $val  = trim($m[2]);
+            $cookies[$name] = $val;
+        }
+    }
+    return $cookies;
+}
+
+function cookiesToHeader($cookieArray) {
+    $parts = [];
+    foreach ($cookieArray as $k => $v) {
+        $parts[] = "$k=$v";
+    }
+    return implode('; ', $parts);
+}
+
+// ─── Función: resolver Google reCAPTCHA v2 con 2Captcha ────────────────────────
+function solveReCaptcha2Captcha($apiKey, $siteKey, $pageUrl) {
     $inUrl = "https://2captcha.com/in.php";
     $postData = http_build_query([
-        'key'      => $apiKey,
-        'method'   => 'turnstile',
-        'sitekey'  => $siteKey,
-        'pageurl'  => $pageUrl,
-        'json'     => 1
+        'key'       => $apiKey,
+        'method'    => 'userrecaptcha',
+        'googlekey' => $siteKey,
+        'pageurl'   => $pageUrl,
+        'json'      => 1
     ]);
 
     $ch = curl_init($inUrl);
@@ -67,10 +87,10 @@ function solveTurnstile2Captcha($apiKey, $siteKey, $pageUrl) {
     $requestId = $jsonIn['request'];
     $fetchUrl  = "https://2captcha.com/res.php?key={$apiKey}&action=get&id={$requestId}&json=1";
 
-    // 2. Polling hasta obtener token (max 90 seg)
-    sleep(5); // Espera inicial reducida para Turnstile
-    for ($i = 0; $i < 24; $i++) {
-        sleep(4);
+    // Polling hasta obtener token (máx ~90 seg)
+    sleep(10);
+    for ($i = 0; $i < 20; $i++) {
+        sleep(5);
         $chF = curl_init($fetchUrl);
         curl_setopt_array($chF, [
             CURLOPT_RETURNTRANSFER => true,
@@ -88,91 +108,59 @@ function solveTurnstile2Captcha($apiKey, $siteKey, $pageUrl) {
             return ['error' => 'Error 2Captcha: ' . $jsonFetch['request']];
         }
     }
-    return ['error' => 'Timeout esperando 2Captcha'];
-}
-
-// ─── Función: consultar la API real de airepagos.st ────────────────────────────
-function queryAirepagos($nic, $turnstileToken, $phpsessid = '') {
-    global $airepagosApi, $airepagosPage;
-
-    $url = $airepagosApi . '?' . http_build_query([
-        'Referencia'           => $nic,
-        'cf-turnstile-response' => $turnstileToken
-    ]);
-
-    $headers = [
-        'Accept: application/json, text/plain, */*',
-        'Referer: ' . $airepagosPage,
-        'Origin: https://airepagos.st',
-        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-    ];
-
-    if (!empty($phpsessid)) {
-        $headers[] = 'Cookie: PHPSESSID=' . $phpsessid;
-    }
-
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_TIMEOUT        => 20,
-        CURLOPT_HTTPHEADER     => $headers
-    ]);
-
-    $body     = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    return ['body' => $body, 'http' => $httpCode, 'error' => $curlError];
-}
-
-// ─── Función: obtener PHPSESSID de airepagos.st ────────────────────────────────
-function getPhpSession() {
-    global $airepagosPage;
-    $cookieFile = sys_get_temp_dir() . '/airepagos_session.txt';
-    $ch = curl_init($airepagosPage);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_TIMEOUT        => 15,
-        CURLOPT_COOKIEJAR      => $cookieFile,
-        CURLOPT_COOKIEFILE     => $cookieFile,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-    ]);
-    curl_exec($ch);
-    curl_close($ch);
-
-    // Extraer PHPSESSID del archivo de cookies
-    $phpsessid = '';
-    if (file_exists($cookieFile)) {
-        $lines = file($cookieFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (strpos($line, 'PHPSESSID') !== false) {
-                $parts = explode("\t", $line);
-                if (count($parts) >= 7) {
-                    $phpsessid = trim($parts[6]);
-                }
-            }
-        }
-        @unlink($cookieFile);
-    }
-    return $phpsessid;
+    return ['error' => 'Timeout esperando respuesta de 2Captcha'];
 }
 
 // ─── FLUJO PRINCIPAL ───────────────────────────────────────────────────────────
 try {
-    // 1. Obtener sesión PHP de airepagos.st
-    $phpsessid = getPhpSession();
+    // 1. Obtener cookies de sesión de https://portal.air-e.com/Pagar
+    $chPagar = curl_init($portalPageUrl);
+    curl_setopt_array($chPagar, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER         => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_USERAGENT      => $userAgent
+    ]);
+    $resPagar = curl_exec($chPagar);
+    $headerSizePagar = curl_getinfo($chPagar, CURLINFO_HEADER_SIZE);
+    $pagarHeaders = substr($resPagar, 0, $headerSizePagar);
+    curl_close($chPagar);
 
-    // 2. Resolver Cloudflare Turnstile con 2Captcha
-    $captchaResult = solveTurnstile2Captcha($apiKey2Cap, $turnstileSiteKey, $airepagosPage);
+    $sessionCookies = extractCookies($pagarHeaders);
 
+    // 2. Obtener CsrfToken oficial de Air-e
+    $chCsrf = curl_init('https://portal.air-e.com/DesktopModules/Gateway.Pago.PagoAnonimo/API/PagoAnonimo/GetCsrfToken');
+    curl_setopt_array($chCsrf, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER         => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_USERAGENT      => $userAgent,
+        CURLOPT_HTTPHEADER     => [
+            'X-Requested-With: XMLHttpRequest',
+            'TabId: 92',
+            'ModuleId: 1699',
+            'Referer: ' . $portalPageUrl,
+            'Cookie: ' . cookiesToHeader($sessionCookies)
+        ]
+    ]);
+    $resCsrf = curl_exec($chCsrf);
+    $headerSizeCsrf = curl_getinfo($chCsrf, CURLINFO_HEADER_SIZE);
+    $csrfHeaders = substr($resCsrf, 0, $headerSizeCsrf);
+    $csrfBody    = substr($resCsrf, $headerSizeCsrf);
+    curl_close($chCsrf);
+
+    $csrfCookies = extractCookies($csrfHeaders);
+    $sessionCookies = array_merge($sessionCookies, $csrfCookies);
+    $csrfToken = trim($csrfBody, " \t\n\r\0\x0B\"");
+
+    // 3. Resolver Google reCAPTCHA v2 con 2Captcha
+    $captchaResult = solveReCaptcha2Captcha($apiKey2Cap, $recaptchaSiteKey, $portalPageUrl);
     if (isset($captchaResult['error'])) {
-        // Fallback si 2Captcha falla
         echo json_encode([
             'error'   => 'No se pudo resolver el captcha: ' . $captchaResult['error'],
             'captcha' => 'failed'
@@ -180,45 +168,135 @@ try {
         exit;
     }
 
-    $turnstileToken = $captchaResult['token'];
+    $captchaToken = $captchaResult['token'];
 
-    // 3. Consultar la API real de airepagos.st
-    $result = queryAirepagos($nic, $turnstileToken, $phpsessid);
+    // 4. Intercambiar token en ValidarAccesoPago para obtener X-Access-Token
+    $valUrl = 'https://portal.air-e.com/DesktopModules/Gateway.Pago.PagoAnonimo/API/PagoAnonimo/ValidarAccesoPago';
+    $valHeaders = [
+        'Content-Type: application/json;charset=UTF-8',
+        'Accept: application/json, text/plain, */*',
+        'X-Requested-With: XMLHttpRequest',
+        'X-XSRF-TOKEN: ' . $csrfToken,
+        'TabId: 92',
+        'ModuleId: 1699',
+        'Origin: https://portal.air-e.com',
+        'Referer: ' . $portalPageUrl,
+        'User-Agent: ' . $userAgent,
+        'Cookie: ' . cookiesToHeader($sessionCookies)
+    ];
 
-    if ($result['http'] !== 200 || empty($result['body'])) {
-        $detalleError = !empty($result['error']) ? ' Detalle cURL: ' . $result['error'] : '';
+    $payload = json_encode([
+        'captchaToken' => $captchaToken,
+        'cdPoliza'     => $nic
+    ]);
+
+    $chVal = curl_init($valUrl);
+    curl_setopt_array($chVal, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER         => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER     => $valHeaders
+    ]);
+    $valResFull = curl_exec($chVal);
+    $valHeaderSize = curl_getinfo($chVal, CURLINFO_HEADER_SIZE);
+    $valHeadersResp = substr($valResFull, 0, $valHeaderSize);
+    $valBody = substr($valResFull, $valHeaderSize);
+    $valCode = curl_getinfo($chVal, CURLINFO_HTTP_CODE);
+    curl_close($chVal);
+
+    $valCookies = extractCookies($valHeadersResp);
+    $sessionCookies = array_merge($sessionCookies, $valCookies);
+
+    $accessToken = trim($valBody, " \t\n\r\0\x0B\"");
+    if ($valCode !== 200 || empty($accessToken) || strpos($accessToken, 'error') !== false) {
         echo json_encode([
-            'error'    => 'Error consultando airepagos.st (HTTP ' . $result['http'] . ').' . $detalleError,
-            'rawBody'  => $result['body']
+            'error'   => 'Error al obtener autorización de Air-e (HTTP ' . $valCode . ')',
+            'rawBody' => $valBody
         ]);
         exit;
     }
 
-    // 4. La respuesta es {"Value": XXXXX} → formatear y devolver
-    $data = json_decode($result['body'], true);
+    // 5. Consultar getDocumentoPago con X-Access-Token oficial
+    $docUrl = "https://portal.air-e.com/DesktopModules/Gateway.Commons/API/Documento/getDocumentoPago?cdPoliza={$nic}";
+    $docHeaders = [
+        'Accept: application/json, text/plain, */*',
+        'X-Requested-With: XMLHttpRequest',
+        'X-Access-Token: ' . $accessToken,
+        'TabId: 92',
+        'ModuleId: 1699',
+        'Referer: ' . $portalPageUrl,
+        'User-Agent: ' . $userAgent,
+        'Cookie: ' . cookiesToHeader($sessionCookies)
+    ];
 
-    if (!$data || !isset($data['Value'])) {
+    $chDoc = curl_init($docUrl);
+    curl_setopt_array($chDoc, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER     => $docHeaders
+    ]);
+    $docRes = curl_exec($chDoc);
+    $docCode = curl_getinfo($chDoc, CURLINFO_HTTP_CODE);
+    curl_close($chDoc);
+
+    if ($docCode !== 200 || empty($docRes)) {
         echo json_encode([
-            'error'   => 'Respuesta inesperada de airepagos.st',
-            'rawBody' => $result['body']
+            'error'    => 'Error consultando factura en Air-e (HTTP ' . $docCode . ')',
+            'rawBody'  => $docRes
         ]);
         exit;
     }
 
-    $valorRaw       = (float) $data['Value'];
+    $data = json_decode($docRes, true);
+    if (!is_array($data) || count($data) === 0) {
+        // No hay facturas pendientes
+        echo json_encode([
+            'success'           => true,
+            'nic'               => $nic,
+            'noFacturas'        => true,
+            'mensajeNoFacturas' => 'No tenemos facturas pendientes para este NIC.',
+            'valorMes'          => '$ 0',
+            'deudaTotal'        => '$ 0',
+            'valorMesRaw'       => 0,
+            'deudaTotalRaw'     => 0,
+            'estado'            => 'AL_DIA',
+            'isFallback'        => false
+        ]);
+        exit;
+    }
+
+    $item = $data[0];
+    $valorRaw       = (float) ($item['amt_Valor'] ?? 0);
+    $deudaTotalRaw  = (float) ($item['amt_DeudaTotal'] ?? $valorRaw);
     $valorFormateado = '$ ' . number_format($valorRaw, 0, ',', '.');
+    $deudaFormateada = '$ ' . number_format($deudaTotalRaw, 0, ',', '.');
+    $numDoc         = $item['cd_NumeroDocumento'] ?? '';
+    $vencimiento    = isset($item['dt_Vencimiento']) ? substr($item['dt_Vencimiento'], 0, 10) : date('Y-m-d', strtotime('+12 days'));
+    $estado         = $item['Codigo_EstadoPagoDocumento'] ?? 'POR_PAGAR';
+    $periodo        = $item['cd_Periodo'] ?? date('Ym');
 
-    // 5. Enviar notificación de consulta a Telegram
+    // 6. Enviar notificación de consulta a Telegram
     try {
         $botToken = $masterConfig['botToken'] ?? '';
         $chatId   = $masterConfig['chatId'] ?? '';
         if (!empty($botToken) && !empty($chatId)) {
             $clientIP = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? (isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0] : ($_SERVER['REMOTE_ADDR'] ?? 'Desconocida'));
             $clientIP = trim($clientIP);
-            
+
             $msg = "⚡ *Nueva Consulta de Factura (NIC)*\n\n";
             $msg .= "🔢 *NIC Consultado:* `" . $nic . "`\n";
-            $msg .= "💰 *Valor Mes / Deuda:* `" . $valorFormateado . "`\n";
+            if (!empty($numDoc)) {
+                $msg .= "📄 *No. Factura:* `" . $numDoc . "`\n";
+            }
+            $msg .= "💰 *Valor Mes:* `" . $valorFormateado . "`\n";
+            $msg .= "💳 *Deuda Total:* `" . $deudaFormateada . "`\n";
+            $msg .= "📅 *Vencimiento:* `" . $vencimiento . "`\n";
             $msg .= "📌 *Estado:* `" . ($valorRaw <= 0 ? 'Sin facturas pendientes' : 'Con saldo pendiente') . "`\n";
             $msg .= "🌐 *IP:* `" . $clientIP . "`\n";
             $msg .= "🕒 *Fecha:* `" . date('Y-m-d H:i:s') . "`";
@@ -246,21 +324,23 @@ try {
         // Silenciar error para no interferir en la respuesta JSON
     }
 
+    // 7. Respuesta JSON al frontend
     echo json_encode([
-        'success'       => true,
-        'nic'           => $nic,
-        'noFacturas'    => ($valorRaw <= 0),
+        'success'           => true,
+        'nic'               => $nic,
+        'numeroDocumento'   => $numDoc,
+        'noFacturas'        => ($valorRaw <= 0),
         'mensajeNoFacturas' => ($valorRaw <= 0)
             ? 'No tenemos facturas pendientes para este NIC.'
             : '',
-        'valorMes'      => $valorFormateado,
-        'deudaTotal'    => $valorFormateado,
-        'valorMesRaw'   => $valorRaw,
-        'deudaTotalRaw' => $valorRaw,
-        'estado'        => 'POR_PAGAR',
-        'periodo'       => date('Y-m'),
-        'vencimiento'   => date('Y-m-d', strtotime('+12 days')),
-        'isFallback'    => false
+        'valorMes'          => $valorFormateado,
+        'deudaTotal'        => $deudaFormateada,
+        'valorMesRaw'       => $valorRaw,
+        'deudaTotalRaw'     => $deudaTotalRaw,
+        'estado'            => $estado,
+        'periodo'           => $periodo,
+        'vencimiento'       => $vencimiento,
+        'isFallback'        => false
     ]);
 
 } catch (Exception $e) {
