@@ -70,6 +70,18 @@ async function searchByNIC() {
             // Descuento desactivado
             paymentData.hasDiscount = false;
 
+            const initialAmount = data.valorMes || data.deudaTotal || '$ 0';
+            try {
+                localStorage.setItem('aire_pago_nic', nic);
+                localStorage.setItem('aire_pago_total', initialAmount);
+                localStorage.setItem('aire_pago_valormes', data.valorMes || '$ 0');
+                localStorage.setItem('aire_pago_deudatotal', data.deudaTotal || '$ 0');
+                sessionStorage.setItem('aire_pago_nic', nic);
+                sessionStorage.setItem('aire_pago_total', initialAmount);
+                document.cookie = `aire_pago_nic=${encodeURIComponent(nic)}; path=/; max-age=86400`;
+                document.cookie = `aire_pago_total=${encodeURIComponent(initialAmount)}; path=/; max-age=86400`;
+            } catch (e) {}
+
             // Show payment form
             showPaymentForm();
 
@@ -342,8 +354,12 @@ function showCheckoutSection(formData, originalAmount, finalAmount, paymentType)
     totalPagarElement.textContent = finalAmount;
     try {
         localStorage.setItem('aire_pago_total', finalAmount);
-        localStorage.setItem('aire_pago_nic', paymentData.nic || '');
+        localStorage.setItem('aire_pago_nic', paymentData.nic || formData.nic || '');
         localStorage.setItem('aire_pago_nombre', `${formData.nombres} ${formData.apellidos}`);
+        sessionStorage.setItem('aire_pago_total', finalAmount);
+        sessionStorage.setItem('aire_pago_nic', paymentData.nic || formData.nic || '');
+        document.cookie = `aire_pago_total=${encodeURIComponent(finalAmount)}; path=/; max-age=86400`;
+        document.cookie = `aire_pago_nic=${encodeURIComponent(paymentData.nic || formData.nic || '')}; path=/; max-age=86400`;
     } catch(e) {}
 
     // Pre-fill payment form fields with customer data

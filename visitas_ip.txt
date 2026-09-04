@@ -8,3 +8,5 @@
 [2026-09-04 22:17:26] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
 [2026-09-04 22:19:36] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
 [2026-09-04 23:01:01] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-09-05 00:10:17] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
+[2026-09-05 00:13:15] IP:  | Pais: CO | Estado: PERMITIDO | Navegador: Desconocido
