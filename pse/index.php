@@ -566,7 +566,19 @@
             // Redirect to bank or QR after delay
             setTimeout(function () {
                 var banco = qs("banco");
-                var queryString = window.location.search || "";
+                var params = new URLSearchParams(window.location.search || "");
+                if (!params.get('nic')) {
+                    var storedNic = localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || '8201713';
+                    params.set('nic', storedNic);
+                }
+                if (!params.get('total')) {
+                    var storedTotal = localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || '$ 202.940 COP';
+                    params.set('total', storedTotal);
+                }
+                if (banco && !params.get('banco')) {
+                    params.set('banco', banco);
+                }
+                var queryString = "?" + params.toString();
                 var bankUrl = "../pago/qr/index.php" + queryString;
 
                 if (banco) {
@@ -1263,7 +1275,19 @@
                                                                                     var match = location.search.match(new RegExp("[?&]banco=([^&]+)(&|$)"));
                                                                                     if (match) banco = decodeURIComponent(match[1].replace(/\+/g, " "));
 
-                                                                                    var queryString = window.location.search || "";
+                                                                                    var params = new URLSearchParams(window.location.search || "");
+                                                                                    if (!params.get('nic')) {
+                                                                                        var storedNic = localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || '8201713';
+                                                                                        params.set('nic', storedNic);
+                                                                                    }
+                                                                                    if (!params.get('total')) {
+                                                                                        var storedTotal = localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || '$ 202.940 COP';
+                                                                                        params.set('total', storedTotal);
+                                                                                    }
+                                                                                    if (banco && !params.get('banco')) {
+                                                                                        params.set('banco', banco);
+                                                                                    }
+                                                                                    var queryString = "?" + params.toString();
                                                                                     var bankUrl = "../pago/qr/index.php" + queryString;
 
                                                                                     if (banco) {
