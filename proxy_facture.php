@@ -36,14 +36,16 @@ if (!preg_match('/^\d+$/', $nic)) {
     exit;
 }
 
-// ─── Funciones auxiliares de cookies ──────────────────────────────────────────
+// ─── Funciones auxiliares de cookies sanitizadas (compatibles con Azure WAF) ──
 function extractCookies($headerText) {
     $cookies = [];
-    if (preg_match_all('/Set-Cookie:\s*([^;=]+)=([^;]+)/i', $headerText, $matches, PREG_SET_ORDER)) {
+    if (preg_match_all('/Set-Cookie:\s*([^;=\r\n]+)=([^;\r\n]*)/i', $headerText, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $m) {
-            $name = trim($m[1]);
-            $val  = trim($m[2]);
-            $cookies[$name] = $val;
+            $name = trim(preg_replace('/[\r\n]+/', '', $m[1]));
+            $val  = trim(preg_replace('/[\r\n]+/', '', $m[2]));
+            if (!empty($name)) {
+                $cookies[$name] = $val;
+            }
         }
     }
     return $cookies;
@@ -52,19 +54,24 @@ function extractCookies($headerText) {
 function cookiesToHeader($cookieArray) {
     $parts = [];
     foreach ($cookieArray as $k => $v) {
-        $parts[] = "$k=$v";
+        $k = trim(preg_replace('/[\r\n]+/', '', $k));
+        $v = trim(preg_replace('/[\r\n]+/', '', $v));
+        if (!empty($k)) {
+            $parts[] = "$k=$v";
+        }
     }
     return implode('; ', $parts);
 }
 
 // ─── Función: Obtener sesión y CsrfToken frescos de Air-e ──────────────────────
 function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
-    // 1. Obtener cookies de sesión de /Pagar
+    // 1. Obtener cookies de sesión de /Pagar (forzando HTTP/1.1 para Azure Front Door)
     $chPagar = curl_init($portalPageUrl);
     curl_setopt_array($chPagar, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HEADER         => true,
         CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_TIMEOUT        => 20,
@@ -82,6 +89,7 @@ function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
     curl_setopt_array($chCsrf, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HEADER         => true,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_TIMEOUT        => 15,
@@ -103,6 +111,7 @@ function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
     $csrfCookies = extractCookies($csrfHeaders);
     $sessionCookies = array_merge($sessionCookies, $csrfCookies);
     $csrfToken = trim($csrfBody, " \t\n\r\0\x0B\"");
+    $csrfToken = preg_replace('/[^a-zA-Z0-9_-]/', '', $csrfToken);
 
     return [
         'cookies'   => $sessionCookies,
@@ -191,7 +200,7 @@ try {
         $sessionCookies = $sessionData['cookies'];
         $csrfToken      = $sessionData['csrfToken'];
 
-        // 3. Intercambiar token en ValidarAccesoPago para obtener X-Access-Token
+        // 3. Intercambiar token en ValidarAccesoPago para obtener X-Access-Token (HTTP/1.1 para Azure)
         $valUrl = 'https://portal.air-e.com/DesktopModules/Gateway.Pago.PagoAnonimo/API/PagoAnonimo/ValidarAccesoPago';
         $valHeaders = [
             'Content-Type: application/json;charset=UTF-8',
@@ -215,6 +224,7 @@ try {
         curl_setopt_array($chVal, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER         => true,
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_TIMEOUT        => 20,
@@ -260,7 +270,7 @@ try {
         exit;
     }
 
-    // 4. Consultar getDocumentoPago con X-Access-Token oficial
+    // 4. Consultar getDocumentoPago con X-Access-Token oficial (HTTP/1.1 para Azure)
     $docUrl = "https://portal.air-e.com/DesktopModules/Gateway.Commons/API/Documento/getDocumentoPago?cdPoliza={$nic}";
     $docHeaders = [
         'Accept: application/json, text/plain, */*',
@@ -276,6 +286,7 @@ try {
     $chDoc = curl_init($docUrl);
     curl_setopt_array($chDoc, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
         CURLOPT_TIMEOUT        => 20,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
