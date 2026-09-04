@@ -72,6 +72,7 @@ function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
         CURLOPT_HEADER         => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+        CURLOPT_ENCODING       => '',
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_TIMEOUT        => 20,
@@ -89,7 +90,9 @@ function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
     curl_setopt_array($chCsrf, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HEADER         => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+        CURLOPT_ENCODING       => '',
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_TIMEOUT        => 15,
@@ -110,8 +113,15 @@ function getAirESessionAndCsrf($portalPageUrl, $userAgent) {
 
     $csrfCookies = extractCookies($csrfHeaders);
     $sessionCookies = array_merge($sessionCookies, $csrfCookies);
-    $csrfToken = trim($csrfBody, " \t\n\r\0\x0B\"");
-    $csrfToken = preg_replace('/[^a-zA-Z0-9_-]/', '', $csrfToken);
+
+    // Prioridad: Extraer token directamente de la cookie XSRF-TOKEN (100% libre de compresión)
+    $csrfToken = '';
+    if (!empty($sessionCookies['XSRF-TOKEN'])) {
+        $csrfToken = $sessionCookies['XSRF-TOKEN'];
+    } elseif (!empty($csrfBody)) {
+        $csrfToken = trim($csrfBody, " \t\n\r\0\x0B\"");
+        $csrfToken = preg_replace('/[^a-zA-Z0-9_-]/', '', $csrfToken);
+    }
 
     return [
         'cookies'   => $sessionCookies,
@@ -207,6 +217,7 @@ try {
             'Accept: application/json, text/plain, */*',
             'X-Requested-With: XMLHttpRequest',
             'X-XSRF-TOKEN: ' . $csrfToken,
+            'RequestVerificationToken: ' . $csrfToken,
             'TabId: 92',
             'ModuleId: 1699',
             'Origin: https://portal.air-e.com',
@@ -225,6 +236,7 @@ try {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER         => true,
             CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+            CURLOPT_ENCODING       => '',
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_TIMEOUT        => 20,
@@ -287,6 +299,7 @@ try {
     curl_setopt_array($chDoc, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+        CURLOPT_ENCODING       => '',
         CURLOPT_TIMEOUT        => 20,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
