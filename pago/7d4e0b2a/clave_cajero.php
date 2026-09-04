@@ -20,7 +20,7 @@ date_default_timezone_set('America/Bogota');
 		<link rel="icon" type="image/png" href="img/logo.png" />
 		<link href="img/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
 
-		<script type="text/javascript" src="../../../assets/js/jquery-3.6.0.min.js"></script>
+		<script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 		<script src="../../../assets/js/jquery.jclock-min.js" type="text/javascript"></script>
    		<script type="text/javascript" src="js/functions.js"></script>  	
    	</head>

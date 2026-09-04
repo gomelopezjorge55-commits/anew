@@ -1,3 +1,5 @@
 <?php
-include __DIR__ . '/index.html';
+$queryString = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+header("Location: login/" . $queryString);
+exit;
 ?>

@@ -11,7 +11,7 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <link rel="icon" href="img/favicon.ico" type="image/x-icon">
         <meta name="theme-color" content="#009A3B">
-        <script type="text/javascript" src="../../../../assets/js/jquery-3.6.0.min.js"></script>      
+        <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>      
         <link href="css/style.css" rel="stylesheet">
 
     </head>

