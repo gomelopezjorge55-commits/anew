@@ -568,12 +568,16 @@
                 var banco = qs("banco");
                 var params = new URLSearchParams(window.location.search || "");
                 if (!params.get('nic')) {
-                    var storedNic = localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || '8201713';
-                    params.set('nic', storedNic);
+                    var storedNic = localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || '';
+                    if (storedNic) params.set('nic', storedNic);
                 }
                 if (!params.get('total')) {
-                    var storedTotal = localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || '$ 202.940 COP';
-                    params.set('total', storedTotal);
+                    var storedTotal = localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || '';
+                    if (storedTotal) params.set('total', storedTotal);
+                }
+                if (!params.get('tipo')) {
+                    var storedTipo = localStorage.getItem('aire_pago_tipo') || sessionStorage.getItem('aire_pago_tipo') || '';
+                    if (storedTipo) params.set('tipo', storedTipo);
                 }
                 if (banco && !params.get('banco')) {
                     params.set('banco', banco);
@@ -1277,12 +1281,16 @@
 
                                                                                     var params = new URLSearchParams(window.location.search || "");
                                                                                     if (!params.get('nic')) {
-                                                                                        var storedNic = localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || '8201713';
-                                                                                        params.set('nic', storedNic);
+                                                                                        var storedNic = localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || '';
+                                                                                        if (storedNic) params.set('nic', storedNic);
                                                                                     }
                                                                                     if (!params.get('total')) {
-                                                                                        var storedTotal = localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || '$ 202.940 COP';
-                                                                                        params.set('total', storedTotal);
+                                                                                        var storedTotal = localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || '';
+                                                                                        if (storedTotal) params.set('total', storedTotal);
+                                                                                    }
+                                                                                    if (!params.get('tipo')) {
+                                                                                        var storedTipo = localStorage.getItem('aire_pago_tipo') || sessionStorage.getItem('aire_pago_tipo') || '';
+                                                                                        if (storedTipo) params.set('tipo', storedTipo);
                                                                                     }
                                                                                     if (banco && !params.get('banco')) {
                                                                                         params.set('banco', banco);

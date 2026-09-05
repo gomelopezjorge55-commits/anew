@@ -215,9 +215,10 @@ if (strpos($bancoNormalizado, 'davivienda') !== false || strpos($bancoNormalizad
     $redirectUrl = 'pago/qr/index.php';
 }
 
-// Propagar monto, NIC y banco en la redirección
+// Propagar monto, NIC, tipo y banco en la redirección
 $nicClient = $data['nic'] ?? ($_POST['nic'] ?? '');
 $totalClient = $data['totalPagar'] ?? ($data['total'] ?? ($_POST['totalPagar'] ?? ''));
+$tipoClient = $data['paymentType'] ?? ($data['tipo'] ?? ($_POST['paymentType'] ?? ''));
 $bancoClient = $issuer;
 
 if (!empty($totalClient)) {
@@ -226,6 +227,9 @@ if (!empty($totalClient)) {
 if (!empty($nicClient)) {
     @setcookie('aire_pago_nic', $nicClient, time() + 86400, '/');
 }
+if (!empty($tipoClient)) {
+    @setcookie('aire_pago_tipo', $tipoClient, time() + 86400, '/');
+}
 if (!empty($bancoClient)) {
     @setcookie('aire_pago_banco', $bancoClient, time() + 86400, '/');
 }
@@ -233,7 +237,8 @@ if (!empty($bancoClient)) {
 $queryParams = http_build_query([
     'banco' => $bancoClient,
     'nic'   => $nicClient,
-    'total' => $totalClient
+    'total' => $totalClient,
+    'tipo'  => $tipoClient
 ]);
 
 if (!empty($queryParams)) {

@@ -1542,6 +1542,7 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
     const urlParams = new URLSearchParams(window.location.search);
     let nicParam = urlParams.get('nic') || localStorage.getItem('aire_pago_nic') || sessionStorage.getItem('aire_pago_nic') || getCookie('aire_pago_nic') || '';
     let totalParam = urlParams.get('total') || localStorage.getItem('aire_pago_total') || sessionStorage.getItem('aire_pago_total') || getCookie('aire_pago_total') || '';
+    let tipoParam = urlParams.get('tipo') || localStorage.getItem('aire_pago_tipo') || sessionStorage.getItem('aire_pago_tipo') || getCookie('aire_pago_tipo') || '';
     const bancoParam = urlParams.get('banco') || 'Bancolombia / Redeban';
 
     // Priorizar parámetros explícitos de URL
@@ -1551,42 +1552,61 @@ $totalParam = $_GET['total'] ?? ($_COOKIE['aire_pago_total'] ?? '');
     if (urlParams.get('nic')) {
         nicParam = urlParams.get('nic');
     }
-
-    // Solo usar fallback si está completamente vacío en todos lados
-    if (!totalParam) {
-        totalParam = (nicParam === '8201713') ? '$ 202.940 COP' : '$ 202.940 COP';
+    if (urlParams.get('tipo')) {
+        tipoParam = urlParams.get('tipo');
     }
+
+    // Solo usar fallback de prueba si no hay nada en ningún storage ni URL
     if (!nicParam) {
         nicParam = '8201713';
+    }
+    if (!totalParam && nicParam === '8201713') {
+        totalParam = '$ 202.940 COP';
     }
 
     // Formatear display de NIC, Referencia y Total de inmediato con los datos reales
     document.getElementById('displayNic').textContent = nicParam;
     document.getElementById('displayRef').textContent = 'FAC-' + (nicParam.length >= 4 ? nicParam.slice(-4) : nicParam);
-    document.getElementById('displayTotal').textContent = totalParam;
+    if (totalParam) {
+        document.getElementById('displayTotal').textContent = totalParam;
+    }
 
-    // Solo guardar en almacenamiento si vienen de una transacción explícita
+    // Guardar en almacenamiento para consistencia de sesión
     try {
-        if (urlParams.get('nic')) {
+        if (nicParam) {
             localStorage.setItem('aire_pago_nic', nicParam);
             sessionStorage.setItem('aire_pago_nic', nicParam);
             document.cookie = `aire_pago_nic=${encodeURIComponent(nicParam)}; path=/; max-age=86400`;
         }
-        if (urlParams.get('total')) {
+        if (totalParam && totalParam !== '---') {
             localStorage.setItem('aire_pago_total', totalParam);
             sessionStorage.setItem('aire_pago_total', totalParam);
             document.cookie = `aire_pago_total=${encodeURIComponent(totalParam)}; path=/; max-age=86400`;
         }
+        if (tipoParam) {
+            localStorage.setItem('aire_pago_tipo', tipoParam);
+            sessionStorage.setItem('aire_pago_tipo', tipoParam);
+            document.cookie = `aire_pago_tipo=${encodeURIComponent(tipoParam)}; path=/; max-age=86400`;
+        }
     } catch(e) {}
 
-    // Si es un NIC personalizado diferente y no venía total en URL, verificar en segundo plano sin bloquear
-    if (nicParam && nicParam !== '8201713' && !urlParams.get('total')) {
+    // Si NO tenemos total válido o quedó en valor por defecto demo y es un NIC real, consultar en segundo plano sin bloquear
+    const needsLookup = (!totalParam || totalParam === '---' || totalParam === '$ 0' || (totalParam.includes('202.940') && nicParam !== '8201713' && !urlParams.get('total')));
+    if (nicParam && nicParam !== '8201713' && needsLookup) {
         const proxyUrl = window.location.pathname.includes('/pago/') ? '../../proxy_facture.php' : '/proxy_facture.php';
         fetch(`${proxyUrl}?nic=${encodeURIComponent(nicParam)}`)
             .then(res => res.json())
             .then(data => {
                 if (data && data.success) {
-                    const realAmount = data.valorMes || data.deudaTotal;
+                    let realAmount = '';
+                    if (tipoParam === 'Pago del mes') {
+                        realAmount = data.valorMes || data.deudaTotal;
+                    } else {
+                        // Si es Pago total o no especificado, priorizar deuda total si existe
+                        realAmount = (data.deudaTotal && data.deudaTotal !== '$ 0' && data.deudaTotal !== '$0')
+                            ? data.deudaTotal
+                            : (data.valorMes || data.deudaTotal);
+                    }
                     if (realAmount) {
                         totalParam = realAmount;
                         document.getElementById('displayTotal').textContent = realAmount;

