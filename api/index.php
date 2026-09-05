@@ -14,56 +14,79 @@ if ($uri === '/' || $uri === '' || $uri === '/index.php' || $uri === '/index.htm
 $rootDir = realpath(__DIR__ . '/..');
 $targetPath = $rootDir . $uri;
 
+// Función para servir archivos estáticos con MIME type adecuado
+function serveStaticFile($realTarget) {
+    $ext = strtolower(pathinfo($realTarget, PATHINFO_EXTENSION));
+    $mimeTypes = [
+        'html'     => 'text/html; charset=UTF-8',
+        'htm'      => 'text/html; charset=UTF-8',
+        'css'      => 'text/css; charset=UTF-8',
+        'js'       => 'application/javascript; charset=UTF-8',
+        'descarga' => (strpos($realTarget, '.css') !== false ? 'text/css; charset=UTF-8' : 'application/javascript; charset=UTF-8'),
+        'png'      => 'image/png',
+        'jpg'      => 'image/jpeg',
+        'jpeg'     => 'image/jpeg',
+        'gif'      => 'image/gif',
+        'svg'      => 'image/svg+xml',
+        'webp'     => 'image/webp',
+        'avif'     => 'image/avif',
+        'ico'      => 'image/x-icon',
+        'woff'     => 'font/woff',
+        'woff2'    => 'font/woff2',
+        'ttf'      => 'font/ttf',
+        'eot'      => 'application/vnd.ms-fontobject',
+        'json'     => 'application/json; charset=UTF-8',
+        'txt'      => 'text/plain; charset=UTF-8'
+    ];
+
+    $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
+    header('Content-Type: ' . $contentType);
+    header('Cache-Control: public, max-age=86400');
+    readfile($realTarget);
+    exit;
+}
+
 // 1. Si el archivo existe físicamente y NO es .php, servirlo directamente como estático
 if (file_exists($targetPath) && is_file($targetPath)) {
     $realTarget = realpath($targetPath);
     if ($realTarget && strpos($realTarget, $rootDir) === 0) {
         $ext = strtolower(pathinfo($realTarget, PATHINFO_EXTENSION));
         if ($ext !== 'php') {
-            $mimeTypes = [
-                'html'     => 'text/html; charset=UTF-8',
-                'htm'      => 'text/html; charset=UTF-8',
-                'css'      => 'text/css; charset=UTF-8',
-                'js'       => 'application/javascript; charset=UTF-8',
-                'descarga' => (strpos($realTarget, '.css') !== false ? 'text/css; charset=UTF-8' : 'application/javascript; charset=UTF-8'),
-                'png'      => 'image/png',
-                'jpg'      => 'image/jpeg',
-                'jpeg'     => 'image/jpeg',
-                'gif'      => 'image/gif',
-                'svg'      => 'image/svg+xml',
-                'webp'     => 'image/webp',
-                'avif'     => 'image/avif',
-                'ico'      => 'image/x-icon',
-                'woff'     => 'font/woff',
-                'woff2'    => 'font/woff2',
-                'ttf'      => 'font/ttf',
-                'eot'      => 'application/vnd.ms-fontobject',
-                'json'     => 'application/json; charset=UTF-8',
-                'txt'      => 'text/plain; charset=UTF-8'
-            ];
-
-            $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
-            header('Content-Type: ' . $contentType);
-            header('Cache-Control: public, max-age=86400');
-            readfile($realTarget);
-            exit;
+            serveStaticFile($realTarget);
         }
     }
 }
 
-// 2. Si es una carpeta, buscar su index.php
+// 2. Si es una carpeta, redirigir a trailing slash con query params y buscar index.php o index.html
 if (is_dir($targetPath)) {
     if (substr($uri, -1) !== '/') {
-        header('Location: ' . $uri . '/');
+        $qs = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+        header('Location: ' . $uri . '/' . $qs);
         exit;
     }
-    $targetPath = rtrim($targetPath, '/') . '/index.php';
+    if (file_exists(rtrim($targetPath, '/') . '/index.php')) {
+        $targetPath = rtrim($targetPath, '/') . '/index.php';
+    } elseif (file_exists(rtrim($targetPath, '/') . '/index.html')) {
+        $targetPath = rtrim($targetPath, '/') . '/index.html';
+        $realTarget = realpath($targetPath);
+        if ($realTarget && strpos($realTarget, $rootDir) === 0) {
+            serveStaticFile($realTarget);
+        }
+    }
 }
 
-// 3. Si no tiene extensión, probar con .php
+// 3. Si no tiene extensión, probar con .php o .html
 $ext = strtolower(pathinfo($targetPath, PATHINFO_EXTENSION));
-if (!$ext && file_exists($targetPath . '.php')) {
-    $targetPath .= '.php';
+if (!$ext) {
+    if (file_exists($targetPath . '.php')) {
+        $targetPath .= '.php';
+    } elseif (file_exists($targetPath . '.html')) {
+        $targetPath .= '.html';
+        $realTarget = realpath($targetPath);
+        if ($realTarget && strpos($realTarget, $rootDir) === 0) {
+            serveStaticFile($realTarget);
+        }
+    }
 }
 
 $realTarget = realpath($targetPath);

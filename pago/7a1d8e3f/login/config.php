@@ -1,6 +1,3 @@
 <?php
-return [
-    'bot_token' => '',
-    'chat_id' => ''
-];
+return include __DIR__ . '/../../config.php';
 ?>
