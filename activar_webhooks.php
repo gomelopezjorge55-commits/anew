@@ -10,8 +10,8 @@ $secKey   = $config['security_key'] ?? 'secure_key_123';
 
 // Base URL predeterminada
 $detectedScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'https';
-$detectedHost   = $_SERVER['HTTP_HOST'] ?? 'recaudoairefactura.vercel.app';
-$defaultBaseUrl = "https://recaudoairefactura.vercel.app";
+$detectedHost   = $_SERVER['HTTP_HOST'] ?? 'airefactura.vercel.app';
+$defaultBaseUrl = "https://airefactura.vercel.app";
 
 // Lista de Webhooks por Pasarela
 $webhooks = [
